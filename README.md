@@ -68,7 +68,7 @@ Every tool call routes through a governance **engine** — a local trusted compu
 
 ```bash
 npm install
-npm test        # 9 fixtures, each a documented 2026 failure mode → asserted unrepresentable
+npm test        # 16 fixtures, each a documented 2026 failure mode → asserted unrepresentable
 node drive.js   # boots the real MCP server, runs a valid call + a denied injected call
 ```
 
@@ -82,7 +82,9 @@ Then call `delete_file` with a `passport` argument and watch the engine allow it
 
 ## Running the fixtures
 
-Each test turns an OWASP MCP Top 10 / NSA-2026 failure mode into a pass/fail assertion:
+Each test turns an OWASP MCP Top 10 / NSA-2026 failure mode into a pass/fail assertion.
+
+**Delegation conformance** — `test/conformance.test.js`
 
 | # | Fixture | Failure mode it closes |
 |:---:|---|---|
@@ -94,10 +96,28 @@ Each test turns an OWASP MCP Top 10 / NSA-2026 failure mode into a pass/fail ass
 | 8 | tampered passport fails signature | forgery · replay |
 | 9 | single-artifact provenance chain | lost "who is this for" |
 
+**Publisher policy** — `test/policy.test.js`
+
+| # | Fixture | Failure mode it closes |
+|:---:|---|---|
+| 10 | verified publisher gets lighter prompt friction, not more power | reputation mistaken for authority |
+| 11 | verified publisher still gets no dangerous cap auto-allowed | trust-based privilege escalation |
+| 12 | `sendEmail` stays denied whatever the publisher status | exfiltration backstop |
+| 13 | no publisher status can exceed the hard budget ceiling | ceiling bypass via reputation |
+| 14 | unverified publisher gets a reduced default budget | unknown-code blast radius |
+| 15 | user can explicitly allow a dangerous cap | informed opt-in preserved |
+| 16 | publisher identity lookup fails safe to unverified | registry outage → fail-open |
+
 ```console
-# tests 9
-# pass 9
+1..16
+# tests 16
+# suites 0
+# pass 16
 # fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms …
 ```
 
 ## What's in here

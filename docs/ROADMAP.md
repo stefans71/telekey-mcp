@@ -50,6 +50,20 @@ The goal is "this stops being *your* project and becomes *a* standard."
 
 > The strategic point: for a governance primitive, **adoption of the idea beats ownership of the code.** Optimize the roadmap for the rule getting standardized, even if that means the repo becomes a footnote.
 
+### Repo operations — revisit when this stops being solo
+
+`main` is protected: CI (`test (20)` **and** `test (22)`) must pass before a merge, `strict` requires a branch to be current with `main` first, and force-pushes and branch deletion are off.
+
+But **`enforce_admins` is deliberately `false`**, and that is the part worth remembering. It means none of the above binds repo admins. As the sole admin you can still push straight to `main` and bypass the required checks entirely — and you can force-push or delete the branch, since those toggles don't bind admins either. What the protection actually buys today is that *someone else* can't merge a red build.
+
+That's the right trade for a one-person repo: turning it on would make every one of your own changes take a PR, and requiring review on top would deadlock outright, since you can't approve your own pull request.
+
+**Trigger to revisit:** the first time anyone else gets write access. Flip it then, and the rules start binding everyone, you included:
+
+```bash
+gh api -X POST repos/stefans71/telekey-mcp/branches/main/protection/enforce_admins
+```
+
 ---
 
 ## Go-to-market
