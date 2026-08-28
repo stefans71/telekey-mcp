@@ -1,0 +1,14 @@
+{
+  "name": "telekey-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Reference MCP gateway implementing the Capability Passport delegation extension",
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "server": "node src/server.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^4.4.3"
+  }
+}

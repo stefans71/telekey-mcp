@@ -1,0 +1,16 @@
+{
+  "name": "telekey-marketplace",
+  "owner": {
+    "name": "stefans71"
+  },
+  "plugins": [
+    {
+      "name": "telekey",
+      "source": "./plugin",
+      "description": "Enforces capability-passport delegation on every tool call via a PreToolUse hook: caps can only narrow, never widen. Blocks calls that exceed the agent's passport before they run.",
+      "version": "0.1.0",
+      "license": "MIT",
+      "keywords": ["mcp", "security", "capability", "attenuation", "delegation", "hooks"]
+    }
+  ]
+}

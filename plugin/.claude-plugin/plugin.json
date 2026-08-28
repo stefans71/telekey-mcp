@@ -1,0 +1,21 @@
+{
+  "name": "telekey",
+  "version": "0.1.0",
+  "description": "Enforces capability-passport delegation on every tool call: caps can only narrow, never widen. Blocks calls that exceed the agent's passport.",
+  "author": "stefans71",
+  "license": "MIT",
+  "keywords": ["mcp", "security", "capability", "attenuation", "delegation", "hooks"],
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node ${CLAUDE_PLUGIN_ROOT}/hooks/pretooluse.js"
+          }
+        ]
+      }
+    ]
+  }
+}

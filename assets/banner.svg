@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="200" viewBox="0 0 900 200" fill="none" role="img" aria-label="Capability Passport — an MCP delegation extension that can only narrow">
+  <defs>
+    <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="0.5" stop-color="#0891b2"/>
+      <stop offset="1" stop-color="#16a34a"/>
+    </linearGradient>
+    <linearGradient id="rule" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6366f1"/>
+      <stop offset="0.5" stop-color="#0891b2"/>
+      <stop offset="1" stop-color="#b45309"/>
+    </linearGradient>
+    <!-- Colors that must flip between GitHub light and dark themes.
+         GitHub strips <style> from README HTML, but NOT from inside an SVG
+         that is rendered as an image, so this media query works here. -->
+    <style>
+      .sub   { fill: #475569; }
+      .chip  { fill: #334155; }
+      .chipb { fill: #e2e8f0; }
+      .card  { fill: #f8fafc; stroke: #e2e8f0; }
+      @media (prefers-color-scheme: dark) {
+        .sub   { fill: #94a3b8; }
+        .chip  { fill: #cbd5e1; }
+        .chipb { fill: #1e293b; }
+        .card  { fill: #0f172a; stroke: #1e293b; }
+      }
+    </style>
+  </defs>
+
+  <!-- keycard motif: three nested cards, each smaller (the whole thesis) -->
+  <rect class="card" x="34" y="58" width="150" height="92" rx="12" stroke-width="1.5"/>
+  <rect x="52" y="76" width="120" height="60" rx="9" fill="url(#brand)" opacity="0.28"/>
+  <rect x="70" y="90" width="86" height="34" rx="7" fill="url(#brand)" opacity="0.55"/>
+  <circle cx="150" cy="107" r="6" fill="url(#brand)"/>
+
+  <!-- gradient heading — reads on both themes because the fill is a bright gradient -->
+  <text x="212" y="86" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="42" font-weight="800" fill="url(#brand)">TeleKey</text>
+  <text x="214" y="120" class="sub" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" font-size="18" font-weight="600">Capability passports for MCP agents. Authority only narrows.</text>
+
+  <!-- provenance chip row -->
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" font-weight="700">
+    <rect class="chipb" x="214" y="138" width="158" height="26" rx="13"/>
+    <text x="230" y="155" class="chip">user → orch → sub</text>
+    <rect class="chipb" x="380" y="138" width="118" height="26" rx="13"/>
+    <text x="396" y="155" class="chip">caps ⊆ parent</text>
+    <rect class="chipb" x="506" y="138" width="132" height="26" rx="13"/>
+    <text x="522" y="155" class="chip">budget metered</text>
+  </g>
+
+  <!-- gradient rule -->
+  <rect x="212" y="176" width="384" height="4" rx="2" fill="url(#rule)"/>
+
+  <!-- lineage note, bottom-right -->
+  <text x="880" y="196" text-anchor="end" class="sub" font-family="ui-sans-serif, system-ui, Arial" font-size="12" font-style="italic">Telescript (1994) → MCP / OAuth 2.1 / RFC 8693 (2026)</text>
+</svg>

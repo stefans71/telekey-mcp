@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 840" font-family="ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#334155"/>
+    </marker>
+    <marker id="arrowNarrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L8,3 L0,6 Z" fill="#b45309"/>
+    </marker>
+    <style>
+      .title{font-size:26px;font-weight:700;fill:#0f172a}
+      .sub{font-size:14px;fill:#64748b}
+      .lbl{font-size:14px;font-weight:600;fill:#0f172a}
+      .sm{font-size:12px;fill:#475569}
+      .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;fill:#1e293b}
+      .tag{font-size:11px;font-weight:700;fill:#fff}
+      .edge{stroke:#334155;stroke-width:2;fill:none}
+      .edgeN{stroke:#b45309;stroke-width:2.5;fill:none}
+    </style>
+  </defs>
+
+  <text x="40" y="46" class="title">Capability-Passport Delegation — MCP extension (technical)</text>
+  <text x="40" y="70" class="sub">Adds holder-side attenuation + append-only provenance on top of RFC 8693 token exchange. Every hop can only narrow, never widen.</text>
+
+  <!-- PRINCIPAL -->
+  <rect x="40" y="100" width="230" height="120" rx="12" fill="#eef2ff" stroke="#6366f1" stroke-width="2"/>
+  <rect x="40" y="100" width="230" height="26" rx="12" fill="#6366f1"/>
+  <text x="54" y="118" class="tag">USER / PRINCIPAL (root authority)</text>
+  <text x="56" y="150" class="sm">Signs the root passport once.</text>
+  <text x="56" y="170" class="sm">Establishes identity + the maximum</text>
+  <text x="56" y="188" class="sm">budget and capability set that any</text>
+  <text x="56" y="206" class="sm">descendant can ever hold.</text>
+
+  <!-- ORCHESTRATOR AGENT -->
+  <rect x="40" y="270" width="230" height="150" rx="12" fill="#ecfeff" stroke="#0891b2" stroke-width="2"/>
+  <rect x="40" y="270" width="230" height="26" rx="12" fill="#0891b2"/>
+  <text x="54" y="288" class="tag">ORCHESTRATOR AGENT (LLM)</text>
+  <text x="56" y="318" class="sm">Cognition plane. Decides what to do,</text>
+  <text x="56" y="336" class="sm">which tools to call, what to delegate.</text>
+  <text x="56" y="360" class="sm">Holds passport P0. Carries P0 on</text>
+  <text x="56" y="378" class="sm">every request — cannot forge or widen it.</text>
+  <rect x="56" y="390" width="198" height="20" rx="4" fill="#cffafe"/>
+  <text x="62" y="404" class="mono">passport P0  sub=user  act=[orch]</text>
+
+  <!-- SUB AGENT -->
+  <rect x="40" y="470" width="230" height="150" rx="12" fill="#ecfeff" stroke="#0891b2" stroke-width="2" stroke-dasharray="5 4"/>
+  <rect x="40" y="470" width="230" height="26" rx="12" fill="#0e7490"/>
+  <text x="54" y="488" class="tag">SUB-AGENT (spawned)</text>
+  <text x="56" y="518" class="sm">Derives P1 from P0 via attenuation.</text>
+  <text x="56" y="536" class="sm">P1 ⊆ P0 enforced at mint time.</text>
+  <rect x="56" y="556" width="198" height="46" rx="4" fill="#cffafe"/>
+  <text x="62" y="572" class="mono">passport P1  sub=user</text>
+  <text x="62" y="588" class="mono">act=[orch, sub]  caps ⊆ P0</text>
+
+  <!-- GOVERNANCE ENGINE (center, the TCB) -->
+  <rect x="330" y="150" width="300" height="500" rx="14" fill="#fff7ed" stroke="#b45309" stroke-width="2.5"/>
+  <rect x="330" y="150" width="300" height="30" rx="14" fill="#b45309"/>
+  <text x="346" y="171" class="tag">GOVERNANCE ENGINE  ·  local TCB / gateway</text>
+  <text x="348" y="205" class="lbl">Every tool call passes through here.</text>
+  <text x="348" y="226" class="sm">Modeled on the Telescript engine: the</text>
+  <text x="348" y="244" class="sm">agent never touches a resource directly.</text>
+
+  <rect x="348" y="262" width="264" height="86" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="360" y="282" class="lbl">1 · Verify passport</text>
+  <text x="360" y="302" class="sm">Check signature + issuer chain (RFC 9207).</text>
+  <text x="360" y="320" class="sm">Confirm requested op ∈ passport.caps.</text>
+  <text x="360" y="338" class="sm">Reject if action exceeds the credential.</text>
+
+  <rect x="348" y="360" width="264" height="86" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="360" y="380" class="lbl">2 · Meter budget</text>
+  <text x="360" y="400" class="sm">Decrement spend / tokens / tool-calls /</text>
+  <text x="360" y="418" class="sm">lifetime / spawn count. Refuse at zero.</text>
+  <text x="360" y="436" class="sm">(Telescript "Permit" — engine-enforced.)</text>
+
+  <rect x="348" y="458" width="264" height="86" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="360" y="478" class="lbl">3 · Attenuate on delegation</text>
+  <text x="360" y="498" class="sm">Mint child passport: caps' ⊆ caps,</text>
+  <text x="360" y="516" class="sm">budget' ≤ remaining. Widening is</text>
+  <text x="360" y="534" class="sm">structurally impossible — not policy.</text>
+
+  <rect x="348" y="556" width="264" height="82" rx="8" fill="#ffedd5" stroke="#ea580c"/>
+  <text x="360" y="576" class="lbl">4 · Exchange + log</text>
+  <text x="360" y="596" class="sm">RFC 8693 exchange for audience-scoped</text>
+  <text x="360" y="614" class="sm">upstream token. Append hop to provenance</text>
+  <text x="360" y="632" class="sm">chain. Full caller-identity attribution.</text>
+
+  <!-- RESOURCES / SERVERS -->
+  <rect x="700" y="120" width="240" height="110" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <rect x="700" y="120" width="240" height="26" rx="12" fill="#16a34a"/>
+  <text x="714" y="138" class="tag">MCP SERVER A  (e.g. repo)</text>
+  <text x="716" y="168" class="sm">Receives only an audience-scoped</text>
+  <text x="716" y="186" class="sm">token minted for THIS server.</text>
+  <text x="716" y="210" class="sm">Never sees the root token (spec rule).</text>
+
+  <rect x="700" y="250" width="240" height="110" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <rect x="700" y="250" width="240" height="26" rx="12" fill="#16a34a"/>
+  <text x="714" y="268" class="tag">MCP SERVER B  (e.g. email)</text>
+  <text x="716" y="298" class="sm">Different trust boundary. Gets its own</text>
+  <text x="716" y="316" class="sm">narrowed passport + scoped token.</text>
+  <text x="716" y="340" class="sm">Can further restrict, never widen.</text>
+
+  <rect x="700" y="380" width="240" height="110" rx="12" fill="#f0fdf4" stroke="#16a34a" stroke-width="2"/>
+  <rect x="700" y="380" width="240" height="26" rx="12" fill="#16a34a"/>
+  <text x="714" y="398" class="tag">SENSITIVE DATA STORE</text>
+  <text x="716" y="428" class="sm">Data-gravity case: a tightly-permitted</text>
+  <text x="716" y="446" class="sm">agent may migrate here and run local,</text>
+  <text x="716" y="464" class="sm">returning results instead of raw data.</text>
+
+  <!-- PROVENANCE LEDGER -->
+  <rect x="700" y="520" width="240" height="130" rx="12" fill="#faf5ff" stroke="#9333ea" stroke-width="2"/>
+  <rect x="700" y="520" width="240" height="26" rx="12" fill="#9333ea"/>
+  <text x="714" y="538" class="tag">PROVENANCE CHAIN</text>
+  <text x="716" y="566" class="sm">Append-only, verifiable from a single</text>
+  <text x="716" y="584" class="sm">artifact (unlike point-to-point 8693).</text>
+  <rect x="716" y="596" width="208" height="44" rx="4" fill="#f3e8ff"/>
+  <text x="722" y="612" class="mono">user → orch → sub → serverA</text>
+  <text x="722" y="628" class="mono">every hop signed &amp; attenuated</text>
+
+  <!-- edges principal->orch -->
+  <line x1="155" y1="220" x2="155" y2="268" class="edge" marker-end="url(#arrow)"/>
+  <text x="165" y="250" class="sm">signs P0</text>
+
+  <!-- orch <-> engine -->
+  <line x1="270" y1="345" x2="328" y2="320" class="edge" marker-end="url(#arrow)"/>
+  <text x="250" y="300" class="sm" transform="rotate(-14 280 330)">tool call + P0</text>
+
+  <!-- engine -> spawn sub (attenuate) -->
+  <path d="M348,505 C300,510 300,545 272,545" class="edgeN" marker-end="url(#arrowNarrow)"/>
+  <text x="150" y="450" class="sm" fill="#b45309" font-weight="600">mint P1 ⊆ P0</text>
+
+  <!-- sub -> engine -->
+  <line x1="270" y1="545" x2="328" y2="545" class="edge" marker-end="url(#arrow)"/>
+
+  <!-- engine -> servers -->
+  <line x1="630" y1="300" x2="698" y2="175" class="edge" marker-end="url(#arrow)"/>
+  <line x1="630" y1="360" x2="698" y2="305" class="edge" marker-end="url(#arrow)"/>
+  <line x1="630" y1="430" x2="698" y2="435" class="edge" marker-end="url(#arrow)"/>
+  <text x="642" y="360" class="sm" transform="rotate(-38 642 360)">scoped token/hop</text>
+
+  <!-- engine -> ledger -->
+  <line x1="630" y1="600" x2="698" y2="585" class="edge" marker-end="url(#arrow)"/>
+
+  <!-- plane labels -->
+  <text x="40" y="700" class="lbl" fill="#0891b2">Cognition plane (LLM decides WHAT)</text>
+  <rect x="40" y="708" width="16" height="12" fill="#ecfeff" stroke="#0891b2"/>
+  <text x="360" y="700" class="lbl" fill="#b45309">Enforcement plane (engine decides WHAT'S ALLOWED)</text>
+  <rect x="360" y="708" width="16" height="12" fill="#fff7ed" stroke="#b45309"/>
+
+  <text x="40" y="760" class="sm">Gap closed vs. plain RFC 8693: (a) holder-side attenuation — the caller narrows without a round-trip to the auth server;</text>
+  <text x="40" y="780" class="sm">(b) single-artifact provenance — the full delegation chain is verifiable from one credential, not reconstructed across opaque tokens;</text>
+  <text x="40" y="800" class="sm">(c) engine-enforced budgets — lifetime, spend, and fan-out are runtime primitives, not external rate limits.</text>
+  <text x="40" y="820" class="sm" fill="#94a3b8">Lineage: Telescript Authority + Permit + permit-renegotiation-on-travel (General Magic, 1994) · mapped onto MCP / OAuth 2.1 / RFC 8693 (2026).</text>
+</svg>

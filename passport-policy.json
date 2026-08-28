@@ -1,0 +1,19 @@
+{
+  "_comment": "Edit this to adjust permissions. decision: allow | ask | deny. Publisher status affects prompt friction + default budget ONLY — never the hard ceiling in src/policy.js.",
+  "defaults": {
+    "decision": "ask",
+    "budget": { "ttl_seconds": 3600, "max_spend": 0.5, "max_tool_calls": 100, "max_spawns": 2 }
+  },
+  "capabilities": {
+    "listRepo:*": "allow",
+    "readFile:*": "allow",
+    "deleteFile:*": "ask",
+    "writeFile:*": "ask",
+    "sendEmail:*": "deny",
+    "exec:*": "ask"
+  },
+  "publishers": {
+    "verified":   { "prompt": "light", "budgetScale": 1.0 },
+    "unverified": { "prompt": "full",  "budgetScale": 0.25 }
+  }
+}
