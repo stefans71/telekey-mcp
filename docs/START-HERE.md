@@ -48,7 +48,7 @@ cd "$TARGET"
 ls -la
 ```
 
-**Case B — from scratch:** the full source is in the appendix of this file (Phase 6). Recreate each file there, then `cd "$TARGET"`.
+**Case B — from scratch:** see Phase 6 for where to get the authoritative source. This wizard does not embed it — recreating `src/` by hand risks drift from the tested version, so treat a missing tarball as a blocker, not a challenge.
 
 Confirm the layout looks right (`src/`, `test/`, `assets/`, `package.json`, `README.md`) before moving on.
 
@@ -162,24 +162,28 @@ Do each only if asked.
 
 ---
 
-## Phase 6 — Appendix: from-scratch file manifest
+## Phase 6 — Appendix: where the source actually lives
 
-If Phase 1 Case B applies, these are the files to recreate. The full contents ship in the tarball; if you only have this wizard, tell the user you need the tarball for the source files (`src/passport.js`, `src/engine.js`, `src/server.js`, `test/conformance.test.js`, `drive.js`, the three `assets/*.svg`, `package.json`), since re-deriving them by hand risks drift from the tested version.
+If Phase 1 Case B applies, do **not** work from a file list written into this
+document. A hardcoded manifest goes stale the moment a file is added — this one
+did, and silently omitted `src/policy.js`, `src/publisher.js`,
+`test/policy.test.js`, and the whole `plugin/` tree. Read the tree from the
+source instead, which is always current:
 
+```bash
+# from the tarball, without extracting it:
+tar -tzf telekey-mcp.tar.gz
+
+# or straight from the repo:
+git clone https://github.com/stefans71/telekey-mcp && git -C telekey-mcp ls-files
 ```
-telekey-mcp/
-├─ README.md
-├─ START-HERE.md            (this file)
-├─ LICENSE
-├─ .gitignore
-├─ package.json
-├─ package-lock.json
-├─ .github/workflows/ci.yml
-├─ src/  passport.js · engine.js · server.js
-├─ test/ conformance.test.js
-├─ drive.js
-└─ assets/ banner.svg · architecture.svg · overview.svg
-```
+
+Either way, prefer the archive or the repo over re-deriving anything by hand.
+The signing, attenuation, and policy logic in `src/` is precisely what the 16
+fixtures assert against, so a hand-written approximation can pass a reading and
+still fail the suite. If you have this wizard and nothing else, say so and stop:
+ask the user for the tarball or the repo URL rather than improvising an
+implementation.
 
 ---
 

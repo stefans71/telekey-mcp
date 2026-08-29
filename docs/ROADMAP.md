@@ -81,7 +81,7 @@ That's a sound default, not a permanent answer. The proper fix, when it's worth 
 </picture>
 ```
 
-Deferred, not urgent — the current PNG is legible in both themes, just not native to dark. Note also that `assets/overview.svg` is now unreferenced; keep it until the diagram settles, then delete it.
+Deferred, not urgent — the current PNG is legible in both themes, just not native to dark. The superseded `assets/overview.svg` has been deleted; recover it from git history if the old diagram is ever wanted.
 
 ---
 
