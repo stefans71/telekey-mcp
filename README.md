@@ -2,40 +2,40 @@
      INSIDE the SVG, so GitHub's Markdown sanitizer (which strips <style> from
      inline HTML) can't touch it, and it reads on both light and dark themes. -->
 <p align="center">
-  <img src="assets/banner.svg" alt="TeleKey — capability passports for MCP agents; authority that can only narrow" width="100%">
+  <img src="assets/banner.svg" alt="TeleKey — a limited-access security key for MCP agents; access that can only narrow" width="100%">
 </p>
 
 <!-- One row of functional badges. Consensus in 2026: 3–6 badges, each linking
      to a real signal. -->
 <p align="center">
   <a href="https://github.com/stefans71/telekey-mcp/actions/workflows/ci.yml"><img src="https://github.com/stefans71/telekey-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
-  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-SDK%201.30-0891b2?style=flat-square" alt="MCP SDK"></a>
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-native-0891b2?style=flat-square" alt="MCP native"></a>
   <a href="https://datatracker.ietf.org/doc/html/rfc8693"><img src="https://img.shields.io/badge/delegation-RFC%208693-6366f1?style=flat-square" alt="RFC 8693"></a>
   <img src="https://img.shields.io/badge/node-%E2%89%A522-5FA04E?style=flat-square&logo=nodedotjs&logoColor=white" alt="node >=22">
   <a href="#license"><img src="https://img.shields.io/badge/license-MIT-334155?style=flat-square" alt="license MIT"></a>
 </p>
 
 <p align="center">
-  <b>TeleKey — a reference MCP gateway where an agent's authority can only ever shrink as it delegates.</b><br>
-  <sub>Ports Telescript's 1994 permit model onto the modern agent stack — as an extension, not a rewrite.</sub>
+  <b>Stop MCP security creep. Give every agent a limited-access security key — scoped to one job, and it can only ever get narrower.</b><br>
+  <sub>MCP-native — works with any MCP client or tool, today.</sub>
 </p>
 
 ---
 
 ## The one-sentence version
 
-An AI assistant gets a **capability passport**, not your master key — and every time it hands work to a sub-agent or crosses a server boundary, the passport can only be copied **smaller**. Widening isn't forbidden by policy; it produces a credential that fails verification.
+Every agent gets a **limited-access security key** instead of your master key — and every time it hands work to a sub-agent or reaches a new MCP tool, that key can only get **narrower**, never wider. Widening isn't blocked by policy; it produces a key that fails verification. (In the code, this key is a signed **capability passport** — same thing, technical name.)
 
 <p align="center">
-  <img src="assets/overview.svg" alt="Plain-language overview: a shrinking keycard checked at a guard desk on every step" width="88%">
+  <img src="assets/overview.png" alt="How TeleKey works: a limited security key that narrows as it's passed to sub-agents, checked before every MCP tool" width="88%">
 </p>
 
 > [!NOTE]
-> This is **enforcement**, not cognition. It bounds what a compromised or prompt-injected agent *can* do. It does **not** stop the agent from being fooled into misusing what it legitimately holds — that's a separate, cognition-plane problem. Keeping the two apart is the whole design.
+> **It limits the damage — it doesn't prevent the compromise.** A scoped key bounds what a hijacked agent can reach; it doesn't stop the hijack. Blocking the manipulation has to happen upstream, before the agent is compromised. TeleKey does the first job well and makes no claim on the second.
 
 ## Why this exists
 
-The delegation primitive the MCP spec now leans on ([RFC 8693 token exchange](https://datatracker.ietf.org/doc/html/rfc8693)) has three documented gaps: no holder-side scope attenuation, no portable provenance across hops, and no cross-domain verification without pre-arranged federation. The first — *the holder can't hand out a smaller credential on its own* — is exactly the property a 1994 language called **Telescript** enforced with its `Permit` model. This repo specifies and demonstrates that missing property as claims + one verification rule on top of standards everyone already ships.
+Permissions creep. In today's MCP setups, an agent's access tends to *widen* as work moves — each new tool, each sub-agent, each hop quietly adds reach, and nothing forces it back down. The delegation primitive the MCP spec now leans on ([RFC 8693 token exchange](https://datatracker.ietf.org/doc/html/rfc8693)) has three documented gaps that let this happen: no holder-side scope attenuation, no portable provenance across hops, and no cross-domain verification without pre-arranged federation. The first — *the holder can't hand out a smaller key on its own* — is exactly the property a 1994 language called **Telescript** enforced with its `Permit` model. TeleKey demonstrates that missing property as a signed key plus one verification rule, on top of standards everyone already ships.
 
 ## Why the name
 
@@ -82,30 +82,23 @@ Then call `delete_file` with a `passport` argument and watch the engine allow it
 
 ## Running the fixtures
 
-Each test turns an OWASP MCP Top 10 / NSA-2026 failure mode into a pass/fail assertion.
-
-**Delegation conformance** — `test/conformance.test.js`
+Each test turns an OWASP MCP Top 10 / NSA-2026 failure mode into a pass/fail assertion. The first nine cover the key's core rule; the last seven cover the permission policy and publisher-awareness layer.
 
 | # | Fixture | Failure mode it closes |
 |:---:|---|---|
-| 1–2 | caps can't widen; scoped can't become wildcard | confused deputy · privilege escalation |
-| 3 | legal narrowing drops unneeded caps | least privilege |
+| 1–2 | key can't widen; scoped can't become wildcard | confused deputy · privilege escalation |
+| 3 | legal narrowing drops unneeded access | least privilege |
 | 4 | budget can't widen | resource abuse |
 | 5 | engine denies ungranted call | missing per-action authz |
 | 6–7 | budget & spawn counters refuse at zero | runaway cost · fan-out |
-| 8 | tampered passport fails signature | forgery · replay |
+| 8 | tampered key fails signature | forgery · replay |
 | 9 | single-artifact provenance chain | lost "who is this for" |
-
-**Publisher policy** — `test/policy.test.js`
-
-| # | Fixture | Failure mode it closes |
-|:---:|---|---|
 | 10 | verified publisher gets lighter prompt friction, not more power | reputation mistaken for authority |
-| 11 | verified publisher still gets no dangerous cap auto-allowed | trust-based privilege escalation |
+| 11 | verified publisher still gets no dangerous access auto-allowed | trust-based privilege escalation |
 | 12 | `sendEmail` stays denied whatever the publisher status | exfiltration backstop |
 | 13 | no publisher status can exceed the hard budget ceiling | ceiling bypass via reputation |
 | 14 | unverified publisher gets a reduced default budget | unknown-code blast radius |
-| 15 | user can explicitly allow a dangerous cap | informed opt-in preserved |
+| 15 | user can explicitly allow dangerous access (informed opt-in) | consent preserved |
 | 16 | publisher identity lookup fails safe to unverified | registry outage → fail-open |
 
 ```console

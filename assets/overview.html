@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TeleKey — a limited security key for MCP agents</title>
+<style>
+  :root{
+    --ink:#141b2b; --body:#3a4356; --mute:#7a8598; --surface:#ffffff; --hair:#e6e9ef;
+    --indigo:#4f46e5; --cyan:#0891b2; --teal:#0e7490; --amber:#b45309;
+    --amber-bg:#fdf6ec; --amber-line:#e7c9a0; --green:#15803d; --green-bg:#f0faf3;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:"Segoe UI",system-ui,-apple-system,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#fff;color:var(--body);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1160px;margin:0 auto;padding:44px 48px 40px;background:#fff}
+  .eyebrow{font-family:var(--mono);font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:var(--cyan);font-weight:600;margin:0 0 10px;text-align:center}
+  h1{font-size:36px;line-height:1.1;font-weight:800;letter-spacing:-.02em;color:var(--ink);margin:0 0 16px;text-align:center}
+  .lede{margin:0;text-align:center;display:flex;flex-direction:column;gap:4px}
+  .lede span{line-height:1.35;letter-spacing:-.005em}
+  .lede .l1{font-size:20px;font-weight:700;color:var(--ink)}
+  .lede .l2{font-size:19px;font-weight:400;color:var(--body)}
+  .lede .l3{font-size:20px;font-weight:700;color:var(--ink)}
+  .rule{height:1px;background:var(--hair);margin:34px 0 40px}
+  .flow{display:flex;align-items:flex-start;justify-content:space-between;gap:0}
+  .node{display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
+  .disc{border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:var(--surface);position:relative}
+  .disc .nm{font-weight:800;letter-spacing:.01em;color:var(--ink);line-height:1}
+  .disc .rl{color:var(--mute);line-height:1.25;margin-top:5px;padding:0 8px}
+  .n1 .disc{width:164px;height:164px;border:2.5px solid var(--indigo);box-shadow:0 0 0 6px #eef0fe}
+  .n1 .nm{font-size:21px}.n1 .rl{font-size:14px}
+  .n2 .disc{width:140px;height:140px;border:2.5px solid var(--cyan);box-shadow:0 0 0 5px #e6f6fa;margin-top:12px}
+  .n2 .nm{font-size:18px}.n2 .rl{font-size:13.5px}
+  .n3 .disc{width:116px;height:116px;border:2.5px dashed var(--teal);box-shadow:0 0 0 4px #e4f2f5;margin-top:24px}
+  .n3 .nm{font-size:16px}.n3 .rl{font-size:13px}
+  .permit{margin-top:18px;font-family:var(--mono);font-size:13px;line-height:1.4;color:#fff;border-radius:8px;padding:9px 12px;text-align:center;min-width:150px;max-width:172px}
+  .permit .k{display:block;font-weight:700;letter-spacing:.03em;font-size:12.5px;opacity:.98}
+  .permit .v{display:block;margin-top:4px;opacity:.9;font-size:12px}
+  .p1{background:var(--indigo)}.p2{background:var(--cyan)}.p3{background:var(--teal)}
+  .link{flex:1 1 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:64px;min-width:64px}
+  .link .cap{font-family:var(--mono);font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--amber);font-weight:600;text-align:center;line-height:1.4}
+  .link .cap span{display:block;font-family:var(--sans);font-size:14px;letter-spacing:0;text-transform:none;color:var(--mute);font-weight:400;margin-top:2px}
+  .link .track{margin-top:10px;width:100%;height:0;border-top:2px solid #c6ccd8;position:relative}
+  .link .track::after{content:"";position:absolute;right:-1px;top:-5px;border-left:8px solid #c6ccd8;border-top:5px solid transparent;border-bottom:5px solid transparent}
+  .target{display:flex;flex-direction:column;align-items:center;flex:0 0 auto;padding-top:6px}
+  .target .lbl{font-family:var(--mono);font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--green);font-weight:600;margin-bottom:10px}
+  .doorbox{width:110px;height:132px;border:2.5px solid var(--green);border-radius:10px;background:var(--green-bg);position:relative}
+  .doorbox::after{content:"";position:absolute;right:12px;top:64px;width:10px;height:10px;border-radius:50%;background:var(--green)}
+  .target .sub{font-size:14px;color:var(--mute);text-align:center;margin-top:10px;line-height:1.35}
+  .guard{margin-top:44px;border:1.5px solid var(--amber-line);background:var(--amber-bg);border-radius:14px;padding:26px 30px}
+  .guard .gh{display:flex;align-items:flex-start;gap:13px;margin:0 0 16px}
+  .guard .badge{flex:0 0 auto;width:30px;height:30px;margin-top:1px;border-radius:7px;background:var(--amber);display:flex;align-items:center;justify-content:center}
+  .guard .badge svg{width:15px;height:15px}
+  .guard .gh h2{font-size:19px;font-weight:700;color:var(--ink);margin:0;letter-spacing:-.01em}
+  .guard .gh p{font-size:15.5px;color:var(--body);margin:3px 0 0}
+  .checks{display:flex;flex-direction:column;gap:13px;margin-top:6px}
+  .chk{display:flex;gap:12px;font-size:16.5px;line-height:1.45;color:var(--body)}
+  .chk .no{flex:0 0 auto;width:24px;height:24px;border-radius:6px;background:#fff;border:1px solid var(--amber-line);color:var(--amber);font-family:var(--mono);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .chk b{color:var(--ink)}
+  .chk .em{color:var(--amber);font-weight:700}
+  .foot{display:flex;flex-direction:column;gap:20px;margin-top:26px}
+  .fc{border:1px solid var(--hair);border-radius:13px;padding:24px 28px;background:#fbfcfd}
+  .fc .tag{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;margin:0 0 10px}
+  .fc.safe .tag{color:var(--green)}
+  .fc.catch .tag{color:var(--amber)}
+  .fc h3{font-size:20px;font-weight:700;color:var(--ink);margin:0 0 10px;letter-spacing:-.01em}
+  .fc p{margin:0;font-size:16.5px;color:var(--body);line-height:1.6}
+  .fc p b{color:var(--ink)}
+  .lineage{margin-top:28px;padding-top:20px;border-top:1px solid var(--hair);font-size:16px;color:var(--mute);line-height:1.6}
+  .lineage b{color:var(--body);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <p class="eyebrow">TeleKey · security for MCP agents</p>
+  <h1>Stop MCP Security Creep.</h1>
+  <div class="lede">
+    <span class="l1">Give Every Agent a Limited Security Key</span>
+    <span class="l2">Scoped to One Job — Shrinks as It's Passed to Helpers</span>
+    <span class="l3">Checked at Every Door.</span>
+  </div>
+  <div class="rule"></div>
+  <div class="flow">
+    <div class="node n1">
+      <div class="disc"><div class="nm">YOU</div><div class="rl">the boss</div></div>
+      <div class="permit p1"><span class="k">MASTER KEY</span><span class="v">opens everything you can</span></div>
+    </div>
+    <div class="link"><div class="cap">narrows<span>gives a smaller copy</span></div><div class="track"></div></div>
+    <div class="node n2">
+      <div class="disc"><div class="nm">ASSISTANT</div><div class="rl">does the thinking</div></div>
+      <div class="permit p2"><span class="k">LIMITED KEY</span><span class="v">this errand · time + spend cap</span></div>
+    </div>
+    <div class="link"><div class="cap">narrows again<span>smaller still</span></div><div class="track"></div></div>
+    <div class="node n3">
+      <div class="disc"><div class="nm">HELPER</div><div class="rl">a sub-task</div></div>
+      <div class="permit p3"><span class="k">NARROWER KEY</span><span class="v">one job · nothing more</span></div>
+    </div>
+    <div class="link"><div class="cap">unlocks<span>just this one thing</span></div><div class="track"></div></div>
+    <div class="target">
+      <div class="lbl">MCP tool</div>
+      <div class="doorbox"></div>
+      <div class="sub">a website,<br>your email, a file</div>
+    </div>
+  </div>
+  <div class="guard">
+    <div class="gh">
+      <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z"/></svg></div>
+      <div>
+        <h2>Every key is checked before an MCP tool opens</h2>
+        <p>The guard — a security layer between the AI and the MCP tools it uses — checks four things on every step.</p>
+      </div>
+    </div>
+    <div class="checks">
+      <div class="chk"><span class="no">1</span><div>Is this key real, and does it open <b>this</b> tool? If not — blocked.</div></div>
+      <div class="chk"><span class="no">2</span><div>Out of time or budget? Each key counts down, then stops.</div></div>
+      <div class="chk"><span class="no">3</span><div>Handing work to a sub-agent? Its key must be <span class="em">narrower</span> — the guard rejects any that isn't.</div></div>
+      <div class="chk"><span class="no">4</span><div>A receipt records who did what, for whom, at every step.</div></div>
+    </div>
+  </div>
+  <div class="foot">
+    <div class="fc safe">
+      <p class="tag">Why it's safer</p>
+      <h3>A hijacked agent can't reach past its task</h3>
+      <p>Most agents today hold broad, standing access — compromise one and it can reach far past the job it was given. A narrow security key limits the damage to what the agent is allowed to do.</p>
+    </div>
+    <div class="fc catch">
+      <p class="tag">The honest catch</p>
+      <h3>It limits the damage</h3>
+      <p>A scoped key bounds what a hijacked agent can reach — it doesn't stop the hijack. Blocking the manipulation has to happen upstream, before the agent is compromised.</p>
+    </div>
+  </div>
+  <p class="lineage">The limited-key idea isn't new — a 1994 language called <b>Telescript</b> enforced exactly this with a credential it called a <i>Permit</i>. Today's agent stack is only now catching up.</p>
+</div>
+</body>
+</html>

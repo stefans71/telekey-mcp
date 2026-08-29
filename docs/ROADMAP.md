@@ -64,6 +64,25 @@ That's the right trade for a one-person repo: turning it on would make every one
 gh api -X POST repos/stefans71/telekey-mcp/branches/main/protection/enforce_admins
 ```
 
+### Deferred — theme-aware overview diagram
+
+`assets/overview.png` is a light-theme raster: solid white background, chosen deliberately so the diagram's text can never disappear against a dark canvas the way a transparent SVG's can. Rounded corners and a hairline border are **baked into the PNG**, not applied via CSS, because GitHub's Markdown sanitizer strips `style` attributes from inline HTML in READMEs — inline styling would silently do nothing.
+
+That's a sound default, not a permanent answer. The proper fix, when it's worth the effort:
+
+- author a dark-palette variant of `assets/overview.html` (the render source, committed alongside),
+- render it to `assets/overview-dark.png`,
+- serve both through `<picture>` + `prefers-color-scheme`, which GitHub does honor:
+
+```html
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/overview-dark.png">
+  <img src="assets/overview.png" alt="…" width="88%">
+</picture>
+```
+
+Deferred, not urgent — the current PNG is legible in both themes, just not native to dark. Note also that `assets/overview.svg` is now unreferenced; keep it until the diagram settles, then delete it.
+
 ---
 
 ## Go-to-market
