@@ -1,10 +1,21 @@
 {
   "name": "telekey",
   "version": "0.1.0",
-  "description": "Enforces capability-passport delegation on every tool call: caps can only narrow, never widen. Blocks calls that exceed the agent's passport.",
+  "description": "Give each agent a key scoped to one job that can only narrow, never widen. A prompt-injected agent reaches for a capability it was never given \u2014 the call is blocked before it runs. Enforced on every tool call via a PreToolUse hook.",
   "author": "stefans71",
   "license": "MIT",
-  "keywords": ["mcp", "security", "capability", "attenuation", "delegation", "hooks"],
+  "keywords": [
+    "mcp-security",
+    "prompt-injection",
+    "agent-security",
+    "least-privilege",
+    "claude-code",
+    "capability",
+    "delegation",
+    "hooks",
+    "mcp",
+    "security"
+  ],
   "hooks": {
     "PreToolUse": [
       {

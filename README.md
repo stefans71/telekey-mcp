@@ -5,8 +5,6 @@
   <img src="assets/banner.svg" alt="TeleKey — a limited-access security key for MCP agents; access that can only narrow" width="100%">
 </p>
 
-<!-- One row of functional badges. Consensus in 2026: 3–6 badges, each linking
-     to a real signal. -->
 <p align="center">
   <a href="https://github.com/stefans71/telekey-mcp/actions/workflows/ci.yml"><img src="https://github.com/stefans71/telekey-mcp/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-native-0891b2?style=flat-square" alt="MCP native"></a>
@@ -16,32 +14,97 @@
 </p>
 
 <p align="center">
-  <b>Stop MCP security creep. Give every agent a limited-access security key — scoped to one job, and it can only ever get narrower.</b><br>
-  <sub>MCP-native — works with any MCP client or tool, today.</sub>
+  <b>Give every MCP agent a key scoped to one job — one that can only ever get narrower, never wider.</b><br>
+  <sub>When an agent is prompt-injected, the capability it reaches for was never in its key. The attack has nowhere to go.</sub>
 </p>
 
 ---
 
-## The one-sentence version
+## See it stop an attack (30 seconds)
 
-Every agent gets a **limited-access security key** instead of your master key — and every time it hands work to a sub-agent or reaches a new MCP tool, that key can only get **narrower**, never wider. Widening isn't blocked by policy; it produces a key that fails verification. (In the code, this key is a signed **capability passport** — same thing, technical name.)
+An agent is told to *"clean up my old files, then email me a summary."* You approve once. The orchestrator hands the cleanup to a helper — with a **narrowed key that drops `sendEmail`**. Then the helper gets prompt-injected into emailing an attacker:
 
 <p align="center">
-  <img src="assets/overview.png" alt="How TeleKey works: a limited security key that narrows as it's passed to sub-agents, checked before every MCP tool" width="88%">
+  <img src="assets/demo.gif" alt="Running node demo.js: the cleanup key drops sendEmail, then a prompt-injected sendEmail:attacker is denied and an attempt to mint a wider key fails with CAPS_WIDENED" width="100%">
 </p>
 
+```bash
+npm install
+node demo.js    # the attack, against the passport API directly
+node drive.js   # the same attack, over real stdio JSON-RPC against src/server.js
+```
+
+<sub>(Recording above is <code>assets/demo.gif</code>; the raw asciinema capture is <code>assets/demo.cast</code>.)</sub>
+
+The injection still happened. It just had **nowhere to go** — `sendEmail` was never in the helper's key, and the key could not be widened to add it. That last line is the whole point: a wider key doesn't get *refused*, it **cannot be built**.
+
 > [!NOTE]
-> **It limits the damage — it doesn't prevent the compromise.** A scoped key bounds what a hijacked agent can reach; it doesn't stop the hijack. Blocking the manipulation has to happen upstream, before the agent is compromised. TeleKey does the first job well and makes no claim on the second.
+> **It limits the damage — it doesn't prevent the compromise.** A scoped key bounds what a hijacked agent can reach; it doesn't stop the hijack. Blocking the manipulation itself has to happen upstream. TeleKey does the first job well and makes no claim on the second.
 
-## Why this exists
+## Install into Claude Code (one command)
 
-Permissions creep. In today's MCP setups, an agent's access tends to *widen* as work moves — each new tool, each sub-agent, each hop quietly adds reach, and nothing forces it back down. The delegation primitive the MCP spec now leans on ([RFC 8693 token exchange](https://datatracker.ietf.org/doc/html/rfc8693)) has three documented gaps that let this happen: no holder-side scope attenuation, no portable provenance across hops, and no cross-domain verification without pre-arranged federation. The first — *the holder can't hand out a smaller key on its own* — is exactly the property a 1994 language called **Telescript** enforced with its `Permit` model. TeleKey demonstrates that missing property as a signed key plus one verification rule, on top of standards everyone already ships.
+This repo *is* a plugin marketplace. Point Claude Code at it and install — no clone, no build:
 
-## Why the name
+```
+/plugin marketplace add stefans71/telekey-mcp
+/plugin install telekey
+```
 
-In 1992, a startup called **General Magic** — the team that later seeded the iPhone, Android, eBay, and WebKit — built a language named **Telescript** for mobile software *agents*. Its core idea was a `Permit`: an unforgeable credential that travelled with an agent and, crucially, could **only be narrowed** as the agent moved between machines. The company folded; the idea was thirty years early.
+The `PreToolUse` hook now enforces the key on every tool call. The same hook contract works on Codex and DeepSeek's bridge. To try the mechanics without installing anything, use `node demo.js` above.
 
-The 2026 agent stack is now reinventing exactly that permit, badly, under names like "delegation token." **TeleKey** picks the idea back up — a *key* that shrinks as it's passed along, carrying its lineage in the name. Old idea, finally on time.
+## The one rule that does the work
+
+> [!IMPORTANT]
+> A child key is valid **only if** `caps ⊆ parent.caps` **and** every budget counter `≤` the parent's remaining budget.
+> Widening produces an object that fails verification — it is **unrepresentable**, not merely refused.
+
+In the code this key is a signed **capability passport**; "key" and "passport" are the same thing throughout. Everything else — the engine, the policy layer, the plugin — exists to enforce that one rule at every hop.
+
+## What it stops
+
+Sixteen conformance fixtures, each turning a documented 2026 agent-security failure mode into a pass/fail assertion. Every line below is backed by a passing test in [`test/`](test/) — run `npm test` to see them go green.
+
+| # | What the test proves | Failure mode it closes |
+|:---:|---|---|
+| 1 | A child key can't widen caps beyond its parent | confused deputy |
+| 2 | A scoped cap can't be promoted to a wildcard | privilege escalation |
+| 3 | Legal narrowing drops unneeded access (cleanup helper loses `sendEmail`) | least privilege |
+| 4 | A child budget can't exceed its parent | resource abuse |
+| 5 | The engine denies a capability not in the key | missing per-action authz |
+| 6 | Metering refuses once the tool-call budget hits zero | runaway cost |
+| 7 | Delegation refuses past the spawn budget | uncontrolled fan-out |
+| 8 | Tampering with caps invalidates the signature | forgery · replay |
+| 9 | Provenance is verifiable from one artifact (`sub` + `act` chain + parent hash) | lost "who is this for" |
+| 10 | A verified publisher gets lighter prompt friction — **not** more power | reputation ≠ authority |
+| 11 | A verified publisher still gets no dangerous cap auto-allowed | trust-based escalation |
+| 12 | `sendEmail` stays denied regardless of publisher status | exfiltration backstop |
+| 13 | No publisher status can exceed the hard budget ceiling | ceiling bypass via reputation |
+| 14 | An unverified publisher gets a reduced default budget | unknown-code blast radius |
+| 15 | A user can explicitly allow a dangerous cap (informed opt-in) | consent preserved |
+| 16 | Publisher lookup fails safe to `unverified` on registry outage | fail-open on outage |
+
+```console
+1..16
+# pass 16
+# fail 0
+```
+
+## Quick start
+
+```bash
+npm install
+node demo.js    # the attack above, running against the real API
+npm test        # 16 fixtures, each a documented failure mode → asserted unrepresentable
+npm run server  # boots the real MCP server (official SDK) over stdio
+```
+
+Open the server in the official **[MCP Inspector](https://github.com/modelcontextprotocol/inspector)**:
+
+```bash
+npx @modelcontextprotocol/inspector node src/server.js
+```
+
+Call `delete_file` with a `passport` argument and watch the engine allow it — or request an ungranted capability and watch it return `isError` with a `CAP_NOT_GRANTED` code.
 
 ## How it works
 
@@ -58,81 +121,23 @@ Every tool call routes through a governance **engine** — a local trusted compu
 | **3** | **Attenuate** — on delegation, mint a child where `caps ⊆ parent` and `budget ≤ remaining` | permit renegotiation on travel |
 | **4** | **Log** — RFC 8693 exchange for an audience-scoped upstream token; append the hop to provenance | four caller identities |
 
-### The one rule that does the work
+Two entry points share this one engine:
 
-> [!IMPORTANT]
-> A child passport is valid **only if** `caps ⊆ parent.caps` **and** every budget counter `≤` the parent's remaining budget.
-> Widening produces an object that fails verification — it is *unrepresentable*, not merely refused.
+- **The MCP server** ([`src/server.js`](src/server.js)) gates each tool with `engine.authorizeCall()` before the tool body runs — the demonstrable, end-to-end path.
+- **The Claude Code plugin** ([`plugin/`](plugin/)) enforces the same rule at the harness boundary via a `PreToolUse` hook, so a call that exceeds the key is blocked *before* it runs — regardless of what the model intended. The same hook contract works on Codex and DeepSeek's bridge.
 
-## Quick start
+## Why the delegation part matters
 
-```bash
-npm install
-npm test        # 16 fixtures, each a documented 2026 failure mode → asserted unrepresentable
-node drive.js   # boots the real MCP server, runs a valid call + a denied injected call
-```
+Permissions creep. In today's MCP setups an agent's access tends to *widen* as work moves — each new tool, each sub-agent, each hop quietly adds reach, and nothing forces it back down. The delegation primitive the MCP spec now leans on ([RFC 8693 token exchange](https://datatracker.ietf.org/doc/html/rfc8693)) has three documented gaps that let this happen: no holder-side scope attenuation, no portable provenance across hops, and no cross-domain verification without pre-arranged federation.
 
-Open it in the official **[MCP Inspector](https://github.com/modelcontextprotocol/inspector)**:
-
-```bash
-npx @modelcontextprotocol/inspector node src/server.js
-```
-
-Then call `delete_file` with a `passport` argument and watch the engine allow it — or try an ungranted capability and watch it return `isError` with a `CAP_NOT_GRANTED` code.
-
-## Running the fixtures
-
-Each test turns an OWASP MCP Top 10 / NSA-2026 failure mode into a pass/fail assertion. The first nine cover the key's core rule; the last seven cover the permission policy and publisher-awareness layer.
-
-| # | Fixture | Failure mode it closes |
-|:---:|---|---|
-| 1–2 | key can't widen; scoped can't become wildcard | confused deputy · privilege escalation |
-| 3 | legal narrowing drops unneeded access | least privilege |
-| 4 | budget can't widen | resource abuse |
-| 5 | engine denies ungranted call | missing per-action authz |
-| 6–7 | budget & spawn counters refuse at zero | runaway cost · fan-out |
-| 8 | tampered key fails signature | forgery · replay |
-| 9 | single-artifact provenance chain | lost "who is this for" |
-| 10 | verified publisher gets lighter prompt friction, not more power | reputation mistaken for authority |
-| 11 | verified publisher still gets no dangerous access auto-allowed | trust-based privilege escalation |
-| 12 | `sendEmail` stays denied whatever the publisher status | exfiltration backstop |
-| 13 | no publisher status can exceed the hard budget ceiling | ceiling bypass via reputation |
-| 14 | unverified publisher gets a reduced default budget | unknown-code blast radius |
-| 15 | user can explicitly allow dangerous access (informed opt-in) | consent preserved |
-| 16 | publisher identity lookup fails safe to unverified | registry outage → fail-open |
-
-```console
-1..16
-# tests 16
-# suites 0
-# pass 16
-# fail 0
-# cancelled 0
-# skipped 0
-# todo 0
-# duration_ms …
-```
-
-## What's in here
-
-```
-src/          passport core: passport.js · engine.js · policy.js · publisher.js · server.js
-plugin/       Claude Code plugin — PreToolUse hook enforcing the passport (also works on Codex/DeepSeek)
-test/         conformance + policy fixtures (16 tests)
-docs/         wizards (START-HERE, INSTALL-PLUGIN) + ROADMAP + NAMING
-assets/       banner + diagrams (theme-aware SVG)
-passport-policy.json   user-adjustable permission settings
-drive.js      scripted JSON-RPC driver over stdio
-```
-
-Repo layout follows Git conventions: `README` + `LICENSE` at root, everything else namespaced. The plugin lives in `plugin/` and imports the shared core from `src/`, so it can be extracted to its own repo later without a rewrite.
+The first — *the holder can't hand out a smaller key on its own* — is exactly the property a 1994 language called **Telescript** enforced with its `Permit` model. TeleKey demonstrates that missing property as a signed key plus one verification rule, on top of standards everyone already ships.
 
 <details>
 <summary><b>Worked example — "clean up my old files, then email me a summary"</b></summary>
 
 <br>
 
-1. You approve once. Root passport **P0**: `caps = {listRepo, deleteFile:repoX, sendEmail:you}`, `budget = {ttl:120s, spend:$0.50, calls:40, spawns:2}`.
+1. You approve once. Root key **P0**: `caps = {listRepo, deleteFile:repoX, sendEmail:you}`, `budget = {ttl:120s, spend:$0.50, calls:40, spawns:2}`.
 2. The orchestrator spawns a cleanup helper. The engine mints **P1 ⊆ P0** with `sendEmail` **dropped** — the helper has no business emailing.
 3. The helper deletes files; each call is checked against `P1.caps`, budget ticks down, and a token scoped only to `repoX` is exchanged per call. The root token is never passed through.
 4. Control returns; the orchestrator sends the summary under P0 (the helper never could).
@@ -141,10 +146,36 @@ If step 2's helper is prompt-injected into `sendEmail:attacker`, verification fa
 
 </details>
 
+## Why the name
+
+In 1992, a startup called **General Magic** — the team that later seeded the iPhone, Android, eBay, and WebKit — built a language named **Telescript** for mobile software *agents*. Its core idea was a `Permit`: an unforgeable credential that travelled with an agent and, crucially, could **only be narrowed** as the agent moved between machines. The company folded; the idea was thirty years early.
+
+The 2026 agent stack is now reinventing exactly that permit, badly, under names like "delegation token." **TeleKey** picks the idea back up — a *key* that shrinks as it's passed along, carrying its lineage in the name. Old idea, finally on time.
+
+## What's in here
+
+```
+src/          passport core: passport.js · engine.js · policy.js · publisher.js · server.js
+plugin/       Claude Code plugin — PreToolUse hook enforcing the passport (also works on Codex/DeepSeek)
+test/         conformance + policy fixtures (16 tests)
+docs/         wizards (START-HERE, INSTALL-PLUGIN) + ROADMAP + NAMING
+assets/       banner + architecture diagram (SVG), demo recording (gif + asciinema cast)
+demo.js       the confused-deputy attack, failing, in 40 lines
+drive.js      scripted JSON-RPC driver: a valid call + a denied injected call, over stdio
+passport-policy.json   user-adjustable permission settings
+```
+
+The plugin lives in `plugin/` and imports the shared core from `src/`, so it can be extracted to its own repo later without a rewrite.
+
 ## Status & caveats
 
 > [!WARNING]
-> Reference implementation, not production. HMAC signing here is a self-contained stand-in for real signed JWTs (RFC 9068, asymmetric keys) — the **verification logic**, not the crypto, is the standardizable part. The MCP project has **no official conformance suite yet** (it's on the 2026 roadmap); these fixtures are written against the real SDK so they can be pointed at that suite when it lands.
+> **Reference implementation, not production.** Three honest edges, each already visible in the code:
+> - **Crypto** — signing uses HMAC-SHA256 as a self-contained stand-in for real signed JWTs (RFC 9068, asymmetric keys). The **verification logic**, not the crypto, is the standardizable part.
+> - **Plugin budget persistence** — the engine meters budgets correctly across calls (fixtures 6–7), but the `PreToolUse` hook currently constructs a fresh engine per invocation, so cross-call metering in the *plugin path* is demo-grade. The server path meters live.
+> - **Tool mapping** — the plugin maps the repo/email demo tools explicitly; broad coverage of `Bash`/`Write`/`Edit`/`WebFetch` is an operator-configured mapping layer, not yet shipped.
+>
+> The MCP project has **no official conformance suite yet** (it's on the 2026 roadmap); these fixtures are written against the real SDK so they can be pointed at that suite when it lands.
 
 ## Lineage & sources
 

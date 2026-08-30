@@ -64,15 +64,28 @@ That's the right trade for a one-person repo: turning it on would make every one
 gh api -X POST repos/stefans71/telekey-mcp/branches/main/protection/enforce_admins
 ```
 
-### Deferred — theme-aware overview diagram
+### Deferred — the overview diagram
 
-`assets/overview.png` is a light-theme raster: solid white background, chosen deliberately so the diagram's text can never disappear against a dark canvas the way a transparent SVG's can. Rounded corners and a hairline border are **baked into the PNG**, not applied via CSS, because GitHub's Markdown sanitizer strips `style` attributes from inline HTML in READMEs — inline styling would silently do nothing.
+The plain-language overview diagram is **not currently in the README**: the demo
+recording (`assets/demo.gif`, from `demo.js`) took the hero slot, on the grounds
+that showing the attack fail beats explaining that it would.
 
-That's a sound default, not a permanent answer. The proper fix, when it's worth the effort:
+The render source is kept at [`assets/overview.html`](../assets/overview.html) —
+a self-contained page, no build step, open it in a browser. The rendered
+`assets/overview.png` was deleted once nothing referenced it; recover it from git
+history rather than re-rendering if the exact original is wanted.
 
-- author a dark-palette variant of `assets/overview.html` (the render source, committed alongside),
-- render it to `assets/overview-dark.png`,
-- serve both through `<picture>` + `prefers-color-scheme`, which GitHub does honor:
+If the diagram is ever reinstated, two things are worth knowing, both learned the
+hard way:
+
+- **Style the raster, not the tag.** GitHub's Markdown sanitizer strips `style`
+  attributes from inline HTML in READMEs, so rounded corners and padding have to
+  be baked into the image. The deleted PNG had a 24px radius and an `#e6e9ef`
+  hairline composited in for exactly this reason.
+- **A solid background is deliberate.** It guarantees the diagram's text stays
+  legible on a dark canvas, which a transparent SVG does not. The proper fix is a
+  dark-palette variant served through `<picture>` + `prefers-color-scheme`, which
+  GitHub does honor:
 
 ```html
 <picture>
@@ -80,8 +93,6 @@ That's a sound default, not a permanent answer. The proper fix, when it's worth 
   <img src="assets/overview.png" alt="…" width="88%">
 </picture>
 ```
-
-Deferred, not urgent — the current PNG is legible in both themes, just not native to dark. The superseded `assets/overview.svg` has been deleted; recover it from git history if the old diagram is ever wanted.
 
 ---
 
