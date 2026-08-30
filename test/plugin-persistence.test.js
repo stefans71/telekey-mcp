@@ -170,6 +170,9 @@ test("plugin path: a forged entry claiming more budget is denied", () => {
   writeFileSync(s2, JSON.stringify({ [hashOf(p)]: forged }));
   r = runHook(s2, p);
   assert.equal(r.permissionDecision, "deny", "re-signing without the secret must not work");
+  // Assert WHY: it must be the entry-signature check rejecting this, not some
+  // incidental shape/TTL failure that would still pass if the check were removed.
+  assert.match(r.permissionDecisionReason, /entry signature invalid/);
   rmSync(dirname(s2), { recursive: true, force: true });
 });
 
