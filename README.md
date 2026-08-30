@@ -18,6 +18,11 @@
   <sub>When an agent is prompt-injected, the capability it reaches for was never in its key. The attack has nowhere to go.</sub>
 </p>
 
+<p align="center">
+  <a href="https://telekey.data-analytics.space"><b>&#9654;&nbsp; Live demo</b></a> &nbsp;·&nbsp;
+  <sub>runs the real engine in your browser — toggle enforcement and watch the same injection succeed, then fail</sub>
+</p>
+
 ---
 
 ## See it stop an attack (30 seconds)
@@ -171,6 +176,7 @@ test/         conformance + policy + plugin-persistence fixtures (25 tests)
 docs/         wizards (START-HERE, INSTALL-PLUGIN) + ROADMAP + NAMING
 assets/       banner + architecture diagram (SVG), demo recording (gif + asciinema cast)
 demo.js       the confused-deputy attack, failing, in 40 lines
+playground/   the same attack as a live page (real engine via Web Crypto, parity-checked)
 drive.js      scripted JSON-RPC driver: a valid call + a denied injected call, over stdio
 passport-policy.json   user-adjustable permission settings
 ```

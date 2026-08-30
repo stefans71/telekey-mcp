@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TeleKey — watch a prompt injection hit a wall</title>
+<meta name="description" content="Interactive playground running TeleKey's real capability-passport engine in the browser. Toggle enforcement and watch the same injection succeed, then fail.">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --panel2:#1c2430; --hair:#2b3440;
+    --ink:#e6edf3; --mute:#8b949e; --dim:#6e7681;
+    --green:#3fb950; --red:#f85149; --amber:#d29922; --cyan:#39c5cf; --violet:#a371f7;
+    --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);
+       font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1120px;margin:0 auto;padding:32px 20px 64px}
+  a{color:var(--cyan)}
+  header{border-bottom:1px solid var(--hair);padding-bottom:20px;margin-bottom:24px}
+  h1{font-size:22px;margin:0 0 6px;letter-spacing:-.01em}
+  h1 .k{color:var(--cyan)}
+  .sub{color:var(--mute);margin:0 0 14px}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .badge{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--hair);
+         background:var(--panel);color:var(--mute);text-decoration:none;display:inline-block}
+  .badge.ok{color:var(--green);border-color:#1f6f34}
+  .badge.bad{color:var(--red);border-color:#7d2725}
+  .badge.wait{color:var(--amber);border-color:#6b5119}
+
+  /* parity failure takes over the page — never render a demo we can't trust */
+  #fatal{display:none;border:1px solid var(--red);background:#2d1416;border-radius:10px;
+         padding:20px;margin-bottom:24px}
+  #fatal h2{color:var(--red);margin:0 0 8px;font-size:16px}
+  #fatal pre{white-space:pre-wrap;color:#ffb4ae;margin:8px 0 0;font-size:12.5px}
+
+  .toggle{display:flex;align-items:center;gap:14px;background:var(--panel);
+          border:1px solid var(--hair);border-radius:10px;padding:14px 16px;margin-bottom:22px}
+  .switch{position:relative;width:52px;height:28px;flex:0 0 auto}
+  .switch input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#30363d;border-radius:999px;cursor:pointer;
+          transition:background .18s}
+  .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;
+          background:#8b949e;border-radius:50%;transition:transform .18s,background .18s}
+  input:checked + .slider{background:#1f6f34}
+  input:checked + .slider:before{transform:translateX(24px);background:var(--green)}
+  .tlabel b{letter-spacing:.02em}
+  .tstate{color:var(--red)} .tstate.on{color:var(--green)}
+  .thint{color:var(--dim);font-size:12.5px}
+
+  .zones{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+  @media(max-width:860px){.zones{grid-template-columns:1fr}}
+  .zone{background:var(--panel);border:1px solid var(--hair);border-radius:10px;padding:14px 16px;min-height:210px}
+  .zone h3{margin:0 0 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);font-weight:600}
+  .row{display:flex;justify-content:space-between;gap:10px;padding:3px 0;font-size:13px}
+  .row .lbl{color:var(--mute)} .row .val{color:var(--ink)}
+  .cap{display:block;padding:2px 0;font-size:13px}
+  .cap.kept{color:var(--green)} .cap.dropped{color:var(--red);text-decoration:line-through;opacity:.75}
+  .none{color:var(--dim);font-style:italic}
+
+  .step{display:flex;align-items:center;gap:9px;padding:5px 0;color:var(--dim);font-size:13px}
+  .step .dot{width:9px;height:9px;border-radius:50%;background:#30363d;flex:0 0 auto}
+  .step.fired{color:var(--ink)} .step.fired .dot{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+  .step.threw{color:var(--red)} .step.threw .dot{background:var(--red);box-shadow:0 0 8px var(--red)}
+  .step.off{opacity:.35}
+
+  .out{border-radius:8px;padding:10px 12px;margin-bottom:8px;border:1px solid var(--hair);background:var(--panel2)}
+  .out.pass{border-color:#1f6f34}
+  .out.block{border-color:#7d2725}
+  .out .t{font-size:13px}
+  .out.pass .t{color:var(--green)} .out.block .t{color:var(--red)}
+  .out .d{color:var(--dim);font-size:12px;margin-top:3px}
+
+  .term{background:#010409;border:1px solid var(--hair);border-radius:10px;padding:16px 18px}
+  .term h3{margin:0 0 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .term pre{margin:0;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.65}
+  .c-g{color:var(--green)} .c-r{color:var(--red)} .c-a{color:var(--amber)}
+  .c-c{color:var(--cyan)} .c-m{color:var(--dim)} .c-v{color:var(--violet)}
+  footer{margin-top:28px;color:var(--dim);font-size:12.5px;border-top:1px solid var(--hair);padding-top:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1><span class="k">TeleKey</span> — watch a prompt injection hit a wall</h1>
+  <p class="sub">The confused-deputy attack from <code>demo.js</code>, running the real engine in your browser.</p>
+  <div class="meta">
+    <span class="badge wait" id="parity-badge">parity: checking…</span>
+    <span class="badge" id="crypto-badge">crypto: —</span>
+    <a class="badge" href="https://github.com/stefans71/telekey-mcp">source on GitHub ↗</a>
+    <a class="badge" href="https://arxiv.org/abs/2608.01710">arXiv:2608.01710 ↗</a>
+  </div>
+</header>
+
+<div id="fatal">
+  <h2>Parity check FAILED — demo withheld</h2>
+  <p>The browser core disagreed with the Node core this page claims to be. Rather than
+     render a demo that would be lying about what it runs, here is the divergence:</p>
+  <pre id="fatal-detail"></pre>
+</div>
+
+<div id="app">
+  <div class="toggle">
+    <label class="switch">
+      <input type="checkbox" id="enforce" checked>
+      <span class="slider"></span>
+    </label>
+    <div class="tlabel">
+      <b>TeleKey enforcement:</b>
+      <span class="tstate on" id="tstate">ON</span>
+      <div class="thint" id="thint">The helper holds a narrowed key. Flip it off to remove the key entirely.</div>
+    </div>
+  </div>
+
+  <div class="zones">
+    <div class="zone">
+      <h3>1 · The key</h3>
+      <div id="z-key"></div>
+    </div>
+    <div class="zone">
+      <h3>2 · The engine</h3>
+      <div id="z-engine"></div>
+    </div>
+    <div class="zone">
+      <h3>3 · Outbound calls</h3>
+      <div id="z-out"></div>
+    </div>
+  </div>
+
+  <div class="term">
+    <h3>Trace — every line below came from a real call</h3>
+    <pre id="log"></pre>
+  </div>
+</div>
+
+<footer>
+  Enforcement bounds what a hijacked agent <em>can</em> do; it does not stop the hijack.
+  Signing here is HMAC-SHA256 via Web Crypto — a stand-in for RFC 9068 JWTs, exactly as in the Node reference.
+  &nbsp;·&nbsp; <a href="https://github.com/stefans71/telekey-mcp">stefans71/telekey-mcp</a>
+</footer>
+
+</div>
+
+<script type="module">
+import { mintRoot, attenuate, verifySignature, sign, hashOf, Engine, PassportError, DeniedError }
+  from "./telekey-core.js";
+import { PARITY } from "./parity.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
+
+// ---------------------------------------------------------------- parity
+// Re-runs the exact sequence the Node core ran, and compares signatures AND
+// allow/deny outcomes. Any divergence means this page is not the engine it
+// claims to be, so it refuses to render the demo at all.
+async function outcome(fn) {
+  try { return { ok: true, value: await fn() }; }
+  catch (e) { return { ok: false, code: e.code, name: e.constructor.name }; }
+}
+const cmp = (v) => JSON.stringify({ ok: v.ok, value: v.value, code: v.code, name: v.name });
+
+async function runParity() {
+  const engine = new Engine();
+  const p0 = await mintRoot(PARITY.root);
+  const p1 = await engine.delegate(p0, PARITY.child);
+  const got = {};
+
+  got["sig.root"]  = { ok: true, value: p0.sig };
+  got["sig.child"] = { ok: true, value: p1.sig };
+  got["hash.root"] = { ok: true, value: await hashOf(p0) };
+  got["sig.fixed"] = { ok: true, value: await sign({ z:1, a:{ d:4, c:[3,{ b:2 }] }, m:null }) };
+  got["verify.root"] = { ok: true, value: await verifySignature(p0) };
+  got["verify.capsTampered"] = { ok: true,
+    value: await verifySignature({ ...p0, caps: [...p0.caps, "deleteFile:repoZ"] }) };
+  got["verify.budgetTampered"] = { ok: true,
+    value: await verifySignature({ ...p0, budget: { ...p0.budget, max_tool_calls: 999999 } }) };
+
+  got["call.delete"] = await outcome(async () =>
+    (await engine.authorizeCall(p1, "deleteFile:repoX", { spend: 0.02 })).remaining);
+  got["call.injectedEmail"] = await outcome(() =>
+    engine.authorizeCall(p1, "sendEmail:attacker", { spend: 0.05 }));
+  got["mint.widerKey"] = await outcome(() =>
+    attenuate(p1, { addActor:"agent:evil", caps:["sendEmail:attacker"], budget:{ max_tool_calls:1 } }));
+  got["mint.widerBudget"] = await outcome(() =>
+    attenuate(p1, { addActor:"agent:greedy", caps:["listRepo:repoX"], budget:{ max_tool_calls:99999 } }));
+  got["mint.wildcard"] = await outcome(() =>
+    attenuate(p1, { addActor:"agent:wild", caps:["deleteFile:*"], budget:{ max_tool_calls:1 } }));
+
+  const diffs = [];
+  for (const exp of PARITY.vectors) {
+    const g = got[exp.id];
+    if (!g) { diffs.push(`${exp.id}: browser produced no result`); continue; }
+    if (cmp(g) !== cmp(exp)) {
+      diffs.push(`${exp.id} (${exp.note})\n    node    : ${cmp(exp)}\n    browser : ${cmp(g)}`);
+    }
+  }
+  return { total: PARITY.vectors.length, diffs };
+}
+
+// ---------------------------------------------------------------- scenario
+const ROOT  = PARITY.root;
+const CHILD = PARITY.child;
+
+function engineZone(steps, threwAt, enforcing) {
+  const all = [["verify","1 · verify — signature + caps"],
+               ["meter","2 · meter — budget counters"],
+               ["attenuate","3 · attenuate — narrow on delegate"],
+               ["log","4 · log — provenance"]];
+  return all.map(([k, label]) => {
+    let cls = "step";
+    if (!enforcing) cls += " off";
+    else if (threwAt === k) cls += " threw";
+    else if (steps.includes(k)) cls += " fired";
+    return `<div class="${cls}"><span class="dot"></span>${esc(label)}</div>`;
+  }).join("") + (enforcing ? "" :
+    `<div class="none" style="margin-top:10px">Engine bypassed — no key to check.</div>`);
+}
+
+async function run() {
+  const enforcing = $("enforce").checked;
+  $("tstate").textContent = enforcing ? "ON" : "OFF";
+  $("tstate").className = "tstate" + (enforcing ? " on" : "");
+  $("thint").textContent = enforcing
+    ? "The helper holds a narrowed key. Flip it off to remove the key entirely."
+    : "No key. The helper inherits your full authority — the usual setup today.";
+
+  const L = [];
+  const say = (s) => L.push(s);
+  let steps = [], threwAt = null;
+
+  say(`<span class="c-m">$</span> node demo.js   <span class="c-m"># enforcement: </span>` +
+      (enforcing ? `<span class="c-g">ON</span>` : `<span class="c-r">OFF</span>`));
+  say("");
+
+  if (!enforcing) {
+    // No engine, no key. Nothing to fake: we simply never call authorizeCall.
+    say(`<span class="c-m">The agent is asked: "clean up my old files, then email me a summary."</span>`);
+    say(`<span class="c-m">It holds your credentials directly. No narrowing happens.</span>`);
+    say("");
+    say(`<span class="c-g">✓</span> deleteFile:repoX      <span class="c-g">→ EXECUTED</span>`);
+    say(`<span class="c-r">✗</span> sendEmail:attacker    <span class="c-r">→ EXECUTED</span>  <span class="c-r">← the injection landed</span>`);
+    say("");
+    say(`<span class="c-r">Data left the building. Nothing checked whether it should.</span>`);
+
+    $("z-key").innerHTML =
+      `<div class="none">No key issued.</div>
+       <div class="row" style="margin-top:10px"><span class="lbl">authority</span><span class="val c-r">full / ambient</span></div>
+       <div class="row"><span class="lbl">budget</span><span class="val c-r">unbounded</span></div>`;
+    $("z-engine").innerHTML = engineZone([], null, false);
+    $("z-out").innerHTML =
+      `<div class="out pass"><div class="t">✓ delete_file → repoX</div><div class="d">intended work</div></div>
+       <div class="out block" style="border-color:#7d2725;background:#2d1416">
+         <div class="t">✗ send_email → attacker</div>
+         <div class="d">DELIVERED — the injected call was never checked</div></div>`;
+    $("log").innerHTML = L.join("\n");
+    return;
+  }
+
+  // ---- enforcement ON: everything below is a real call into the engine ----
+  const engine = new Engine();
+  const p0 = await mintRoot(ROOT);
+  say(`<span class="c-c">P0</span> root key    : ${esc(p0.caps.join(", "))}`);
+
+  const p1 = await engine.delegate(p0, CHILD);
+  steps = [...engine.steps];
+  const dropped = p0.caps.filter(c => !p1.caps.includes(c));
+  say(`<span class="c-c">P1</span> cleanup key : ${esc(p1.caps.join(", "))}   ` +
+      `<span class="c-a">← ${esc(dropped.join(", "))} dropped</span>`);
+  say("");
+
+  const outs = [];
+
+  // 1 · the legitimate call
+  let r1;
+  try {
+    r1 = await engine.authorizeCall(p1, "deleteFile:repoX", { spend: 0.02 });
+    steps = [...new Set([...steps, ...engine.steps])];
+    say(`<span class="c-g">✓</span> deleteFile:repoX      <span class="c-g">→ ALLOWED</span>   ` +
+        `<span class="c-m">remaining ${esc(JSON.stringify(r1.remaining))}</span>`);
+    outs.push(`<div class="out pass"><div class="t">✓ delete_file → repoX</div>
+      <div class="d">inside the key · budget now ${esc(JSON.stringify(r1.remaining))}</div></div>`);
+  } catch (e) {
+    say(`<span class="c-r">✗ unexpected: ${esc(e.code)}</span>`);
+  }
+
+  // 2 · the injected call — must be a REAL throw to render as blocked
+  try {
+    await engine.authorizeCall(p1, "sendEmail:attacker", { spend: 0.05 });
+    say(`<span class="c-r">✗ sendEmail:attacker was ALLOWED — invariant broken!</span>`);
+    outs.push(`<div class="out block"><div class="t">✗ invariant broken</div></div>`);
+  } catch (e) {
+    threwAt = "verify";
+    say(`<span class="c-g">✓</span> sendEmail:attacker    <span class="c-r">→ DENIED (${esc(e.code)})</span>   ` +
+        `<span class="c-m">the injection had nowhere to go</span>`);
+    outs.push(`<div class="out block"><div class="t">✗ send_email → attacker</div>
+      <div class="d">BLOCKED · real throw: <b>${esc(e.code)}</b> — ${esc(e.message)}</div></div>`);
+  }
+
+  // 3 · the subtler attack: mint a wider key
+  try {
+    await attenuate(p1, { addActor:"agent:evil", caps:["sendEmail:attacker"], budget:{ max_tool_calls:1 } });
+    say(`<span class="c-r">✗ a wider key was minted — this would be the breach</span>`);
+  } catch (e) {
+    say(`<span class="c-g">✓</span> mint wider key        <span class="c-r">→ ${esc(e.code)}</span>   ` +
+        `<span class="c-m">a wider key is unrepresentable, not refused</span>`);
+    outs.push(`<div class="out block"><div class="t">✗ mint wider key</div>
+      <div class="d">BLOCKED · real throw: <b>${esc(e.code)}</b></div></div>`);
+  }
+
+  say("");
+  say(`<span class="c-m">The injection still happened. It just had nowhere to go.</span>`);
+
+  const cap = (c) => p1.caps.includes(c)
+    ? `<span class="cap kept">✓ ${esc(c)}</span>`
+    : `<span class="cap dropped">✗ ${esc(c)}</span>`;
+  $("z-key").innerHTML =
+    p0.caps.map(cap).join("") +
+    `<div class="row" style="margin-top:12px"><span class="lbl">chain</span>
+       <span class="val c-c">${esc(p1.act.join(" → "))}</span></div>` +
+    Object.entries(r1 ? r1.remaining : p1.budget).map(([k, v]) =>
+      `<div class="row"><span class="lbl">${esc(k)}</span><span class="val">${esc(v)}</span></div>`).join("");
+  $("z-engine").innerHTML = engineZone(steps, threwAt, true);
+  $("z-out").innerHTML = outs.join("");
+  $("log").innerHTML = L.join("\n");
+}
+
+// ---------------------------------------------------------------- boot
+(async () => {
+  $("crypto-badge").textContent = "crypto: " + (globalThis.crypto?.subtle ? "Web Crypto ✓" : "UNAVAILABLE");
+  $("crypto-badge").className = "badge " + (globalThis.crypto?.subtle ? "ok" : "bad");
+
+  let parity;
+  try {
+    parity = await runParity();
+  } catch (e) {
+    parity = { total: PARITY.vectors.length, diffs: ["threw while running vectors: " + e.message] };
+  }
+
+  const badge = $("parity-badge");
+  if (parity.diffs.length === 0) {
+    badge.textContent = `parity: ${parity.total}/${parity.total} match Node core ✓`;
+    badge.className = "badge ok";
+    $("enforce").addEventListener("change", run);
+    await run();
+  } else {
+    badge.textContent = `parity: FAILED (${parity.diffs.length}/${parity.total})`;
+    badge.className = "badge bad";
+    $("app").style.display = "none";
+    $("fatal").style.display = "block";
+    $("fatal-detail").textContent = parity.diffs.join("\n\n");
+  }
+})();
+</script>
+</body>
+</html>
