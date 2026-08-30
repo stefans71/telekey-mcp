@@ -64,10 +64,10 @@ npm install
 npm test
 ```
 
-**Report the result clearly.** You want to see `# pass 16 / # fail 0`. If any test fails, stop and show which one — do not proceed to GitHub with failing tests.
+**Report the result clearly.** You want to see `# pass 21 / # fail 0`. If any test fails, stop and show which one — do not proceed to GitHub with failing tests.
 
 🟡 **ASK 2** — Once green:
-> "All 16 fixtures pass. Want me to (a) boot the MCP server and run the demo driver, (b) skip to GitHub setup, or (c) stop here?"
+> "All 21 fixtures pass. Want me to (a) boot the MCP server and run the demo driver, (b) skip to GitHub setup, or (c) stop here?"
 
 If (a):
 ```bash

@@ -62,7 +62,7 @@ In the code this key is a signed **capability passport**; "key" and "passport" a
 
 ## What it stops
 
-Sixteen conformance fixtures, each turning a documented 2026 agent-security failure mode into a pass/fail assertion. Every line below is backed by a passing test in [`test/`](test/) — run `npm test` to see them go green.
+Twenty-one fixtures, each turning a documented 2026 agent-security failure mode into a pass/fail assertion. Every line below is backed by a passing test in [`test/`](test/) — run `npm test` to see them go green.
 
 | # | What the test proves | Failure mode it closes |
 |:---:|---|---|
@@ -82,10 +82,16 @@ Sixteen conformance fixtures, each turning a documented 2026 agent-security fail
 | 14 | An unverified publisher gets a reduced default budget | unknown-code blast radius |
 | 15 | A user can explicitly allow a dangerous cap (informed opt-in) | consent preserved |
 | 16 | Publisher lookup fails safe to `unverified` on registry outage | fail-open on outage |
+| 17 | Remaining budget survives **between hook processes** | plugin-path metering |
+| 18 | The state file records the decremented budget | metering is durable, not in-memory |
+| 19 | Corrupt budget state denies rather than resetting to full | unreadable budget ≠ unlimited |
+| 20 | Wrongly-shaped budget state denies | state tampering |
+| 21 | A missing state file is first-run, not a failure | usable out of the box |
 
 ```console
-1..16
-# pass 16
+1..21
+# tests 21
+# pass 21
 # fail 0
 ```
 
@@ -94,7 +100,7 @@ Sixteen conformance fixtures, each turning a documented 2026 agent-security fail
 ```bash
 npm install
 node demo.js    # the attack above, running against the real API
-npm test        # 16 fixtures, each a documented failure mode → asserted unrepresentable
+npm test        # 21 fixtures, each a documented failure mode → asserted unrepresentable
 npm run server  # boots the real MCP server (official SDK) over stdio
 ```
 
@@ -157,7 +163,7 @@ The 2026 agent stack is now reinventing exactly that permit, badly, under names 
 ```
 src/          passport core: passport.js · engine.js · policy.js · publisher.js · server.js
 plugin/       Claude Code plugin — PreToolUse hook enforcing the passport (also works on Codex/DeepSeek)
-test/         conformance + policy fixtures (16 tests)
+test/         conformance + policy + plugin-persistence fixtures (21 tests)
 docs/         wizards (START-HERE, INSTALL-PLUGIN) + ROADMAP + NAMING
 assets/       banner + architecture diagram (SVG), demo recording (gif + asciinema cast)
 demo.js       the confused-deputy attack, failing, in 40 lines
@@ -172,7 +178,7 @@ The plugin lives in `plugin/` and imports the shared core from `src/`, so it can
 > [!WARNING]
 > **Reference implementation, not production.** Three honest edges, each already visible in the code:
 > - **Crypto** — signing uses HMAC-SHA256 as a self-contained stand-in for real signed JWTs (RFC 9068, asymmetric keys). The **verification logic**, not the crypto, is the standardizable part.
-> - **Plugin budget persistence** — the engine meters budgets correctly across calls (fixtures 6–7), but the `PreToolUse` hook currently constructs a fresh engine per invocation, so cross-call metering in the *plugin path* is demo-grade. The server path meters live.
+> - **Concurrent tool calls** — the hook persists remaining budget between invocations (fixtures 17–21), but writes are **last-write-wins**, not transactional. Two hook processes that overlap can both read the same remaining budget and the later write clobbers the earlier, so a burst of parallel calls can under-count spend. A production deployment would put this behind a daemon or a file lock.
 > - **Tool mapping** — the plugin maps the repo/email demo tools explicitly; broad coverage of `Bash`/`Write`/`Edit`/`WebFetch` is an operator-configured mapping layer, not yet shipped.
 >
 > The MCP project has **no official conformance suite yet** (it's on the 2026 roadmap); these fixtures are written against the real SDK so they can be pointed at that suite when it lands.

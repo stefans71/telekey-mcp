@@ -15,7 +15,7 @@
 // The same contract's event names (PreToolUse) are shared by Codex and by
 // DeepSeek's compatibility bridge, so this file is the basis for all three.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Engine, DeniedError } from "../../src/engine.js";
@@ -33,10 +33,64 @@ try {
   VERIFIED_NAMES = JSON.parse(readFileSync(join(__dir, "verified-publishers.json"), "utf8"));
 } catch { /* none pinned */ }
 
-// One engine instance persisted across the session via a tiny state file, so
-// budgets actually decrement between calls. (A daemon or socket would be the
-// production choice; a state file keeps the demo dependency-free.)
-const STATE = join(__dir, ".passport-state.json");
+// --- budget persistence -------------------------------------------------
+// Claude Code spawns a FRESH process for every tool call, so remaining budget
+// has to outlive the process or metering is theatre. State is a small JSON map
+// of hashOf(passport) -> remaining budget, mirroring Engine.remaining exactly.
+//
+// CONCURRENCY: last-write-wins, deliberately, and NOT transactional. Two hook
+// processes whose lifetimes overlap can both read the same remaining budget,
+// and the later write clobbers the earlier — so a burst of parallel tool calls
+// can under-count spend. There is no lock, no compare-and-swap, no atomic
+// rename here. A production deployment would put this behind a daemon or a
+// file lock. This is stated out loud because an unstated race is worse than a
+// known one.
+//
+// The path is overridable so tests can run hermetically; unset in normal use.
+const STATE = process.env.TELEKEY_STATE_PATH || join(__dir, ".passport-state.json");
+
+// FAIL CLOSED, without exception: an unreadable budget must never mean
+// "unlimited". A missing file is the one benign case (first run — nothing has
+// been spent yet, and each passport then seeds from its own SIGNED budget).
+// Anything else — corrupt JSON, wrong shape, unreadable — refuses the call
+// rather than silently resetting the budget to full, because "reset to full"
+// is exactly the outcome an attacker who can scribble on this file wants.
+function loadState() {
+  let raw;
+  try {
+    raw = readFileSync(STATE, "utf8");
+  } catch (e) {
+    if (e.code === "ENOENT") return {}; // first run
+    deny(`budget state unreadable (${e.code}) — refusing rather than resetting (fail-closed).`);
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    deny("budget state is corrupt JSON — refusing rather than resetting the budget (fail-closed).");
+  }
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    deny("budget state is not an object — refusing rather than resetting the budget (fail-closed).");
+  }
+  for (const v of Object.values(parsed)) {
+    if (v === null || typeof v !== "object" || Array.isArray(v)) {
+      deny("budget state has a malformed entry — refusing rather than resetting (fail-closed).");
+    }
+  }
+  return parsed;
+}
+
+// A budget we cannot record is a budget we cannot enforce on the next call, so
+// a failed write denies too. The on-disk state is left untouched in that case.
+function saveState() {
+  const out = {};
+  for (const [h, budget] of engine.remaining) out[h] = budget;
+  try {
+    writeFileSync(STATE, JSON.stringify(out, null, 2));
+  } catch (e) {
+    deny(`could not persist budget state (${e.code}) — refusing (fail-closed).`);
+  }
+}
 
 function readEvent() {
   try {
@@ -107,8 +161,11 @@ if (!verifySignature(passport)) {
 }
 
 const engine = new Engine();
-// (Budgets reset per hook process here for demo simplicity; see STATE note above
-//  for how a persistent engine would carry them across calls.)
+// Seed remaining budgets from the previous invocation. Entries for other
+// passports in the chain are carried through untouched so they keep metering.
+for (const [h, budget] of Object.entries(loadState())) {
+  engine.remaining.set(h, { ...budget });
+}
 
 const cap = capabilityFor(toolName, input);
 
@@ -130,6 +187,7 @@ if (decision.decision === "ask") {
 // --- LAYER 2: passport enforcement (the narrowing invariant) ------------
 try {
   engine.authorizeCall(passport, cap, { spend: 0 });
+  saveState(); // before emit() — emit() exits the process
   allow(`policy+passport permit '${cap}' (publisher=${pub}, chain: ${passport.act.join(" → ")}).`);
 } catch (e) {
   if (e instanceof DeniedError) {
