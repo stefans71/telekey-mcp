@@ -38,12 +38,32 @@ export function budgetWithinParent(childBudget, parentBudget) {
 }
 
 // ---- signing ----------------------------------------------------------
-function canonical(body) {
-  // deterministic serialization for signing (sorted keys, arrays as-is)
-  return JSON.stringify(body, Object.keys(body).sort());
+// Deterministic serialization for signing: keys sorted at EVERY level.
+//
+// This is recursive for a reason. The obvious one-liner —
+//   JSON.stringify(body, Object.keys(body).sort())
+// — passes an ARRAY replacer, which JSON.stringify applies as a key filter at
+// every nesting level, not just the top. Nested objects whose keys aren't in
+// that top-level list serialize as {}. That silently dropped `budget` from the
+// signed payload, so a passport's budget could be inflated without breaking
+// its signature. Covered now by the budget-tampering fixture in
+// test/conformance.test.js.
+export function canonical(value) {
+  if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
+  if (value && typeof value === "object") {
+    return (
+      "{" +
+      Object.keys(value)
+        .sort()
+        .map((k) => JSON.stringify(k) + ":" + canonical(value[k]))
+        .join(",") +
+      "}"
+    );
+  }
+  return value === undefined ? "null" : JSON.stringify(value);
 }
 
-function sign(body) {
+export function sign(body) {
   return crypto.createHmac("sha256", SECRET).update(canonical(body)).digest("hex");
 }
 

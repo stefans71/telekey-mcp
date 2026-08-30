@@ -28,12 +28,13 @@ If none of those three hold up on contact with users, that's the signal to fold 
 Framed in phases, not dates — a solo/small effort should gate on validation, not calendar.
 
 ### Phase 0 — Reference (done)
-The current repo: passport core, engine, real MCP server, 9 conformance fixtures, diagrams, CI. This exists to make the idea *concrete and testable*, not to be run in production.
+The current repo: passport core, engine, real MCP server, 25 fixtures across conformance/policy/plugin-persistence, diagrams, CI. This exists to make the idea *concrete and testable*, not to be run in production.
 
 ### Phase 1 — Credibility
 The goal is "a serious person could evaluate this in an afternoon."
 - Swap HMAC for **real signed JWTs** (RFC 9068, asymmetric keys). This is the single biggest credibility gap today.
 - Add the **RFC 8693 token-exchange** leg for real (currently logged/simulated), against a throwaway auth server, so the upstream-scoped-token story is demonstrable end to end.
+- **Issuer-held budget state (authoritative mode).** The plugin meters locally, in a signed, TTL-bounded state file. That bounds the delete-reset vector — a deleted file reseeds to the passport's signed ceiling, never above it, and only until the TTL would have reset it anyway — but it cannot close it. Moving remaining-budget accounting to the issuer, as monotonic durable state, is the only complete fix, and that is a proven requirement rather than a design preference.[^caplease] This is the natural companion to the token-exchange leg above: the same auth server that issues scoped tokens is the thing that should be counting them.
 - **HTTP transport** for the MCP server (it's stdio today). Nothing real integrates over stdio.
 - Turn the fixtures into a **runnable eval you can point at any MCP gateway**, and publish the OWASP-MCP-Top-10 mapping as the headline artifact.
 
@@ -104,7 +105,7 @@ This is developer-tools / open-source infrastructure, so GTM = attention + trust
 > *Authority that can only narrow. A capability-passport layer for MCP agents — reviving a 1994 idea the modern stack is scrambling to reinvent.*
 
 ### The three audiences, in order
-1. **MCP / agent-infra developers** — the adopters. Reach them where they already are: the MCP GitHub discussions, the Auth WG, Show HN, agent-dev Discords, and the `modelcontextprotocol` topic. The hook is the **OWASP-MCP-Top-10 eval** ("does your gateway pass these 9 tests?") — a tool that makes their problem legible.
+1. **MCP / agent-infra developers** — the adopters. Reach them where they already are: the MCP GitHub discussions, the Auth WG, Show HN, agent-dev Discords, and the `modelcontextprotocol` topic. The hook is the **OWASP-MCP-Top-10 eval** ("does your gateway pass these fixtures?") — a tool that makes their problem legible.
 2. **AI-security researchers & writers** — the amplifiers. The Telescript-lineage essay is genuinely publishable. It travels because it's a *story* (past-futures-of-computing) attached to a *live 2026 problem*. This is your cheapest, highest-leverage channel.
 3. **Standards people** — the deciders. Smaller, slower, but the only audience that matters for Phase 3. Reached by *doing the work in the open* — an ID, clean test vectors, and showing up in the WG.
 
@@ -128,3 +129,5 @@ This is developer-tools / open-source infrastructure, so GTM = attention + trust
 ## The one-paragraph version
 
 Build the smallest trustworthy thing (real JWTs + RFC 8693 + an HTTP gateway + the eval), tell the Telescript story loudly to researchers, put the OWASP-MCP eval in front of gateway builders as a utility, and aim the whole effort at getting the narrowing invariant into an MCP authorization extension — converging with the macaroon/DCT work rather than fighting it. Win the *idea*, not the repo.
+
+[^caplease]: Xu, Fan, Wang, Li & Liu, *[Beyond Single-Use Tokens: Durable Authorization State for Replay-Resistant LLM Agent Actions](https://arxiv.org/abs/2608.01710)*, arXiv:2608.01710 (2026). Shows that identifier-local token consumption cannot prevent fresh reissuance unless the issuer retains monotonic durable state over the authorized action, the confirmation event, and the remaining execution budget.

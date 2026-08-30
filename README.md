@@ -62,7 +62,7 @@ In the code this key is a signed **capability passport**; "key" and "passport" a
 
 ## What it stops
 
-Twenty-one fixtures, each turning a documented 2026 agent-security failure mode into a pass/fail assertion. Every line below is backed by a passing test in [`test/`](test/) — run `npm test` to see them go green.
+Twenty-five fixtures, each turning a documented 2026 agent-security failure mode into a pass/fail assertion. Every line below is backed by a passing test in [`test/`](test/) — run `npm test` to see them go green.
 
 | # | What the test proves | Failure mode it closes |
 |:---:|---|---|
@@ -74,24 +74,28 @@ Twenty-one fixtures, each turning a documented 2026 agent-security failure mode 
 | 6 | Metering refuses once the tool-call budget hits zero | runaway cost |
 | 7 | Delegation refuses past the spawn budget | uncontrolled fan-out |
 | 8 | Tampering with caps invalidates the signature | forgery · replay |
-| 9 | Provenance is verifiable from one artifact (`sub` + `act` chain + parent hash) | lost "who is this for" |
-| 10 | A verified publisher gets lighter prompt friction — **not** more power | reputation ≠ authority |
-| 11 | A verified publisher still gets no dangerous cap auto-allowed | trust-based escalation |
-| 12 | `sendEmail` stays denied regardless of publisher status | exfiltration backstop |
-| 13 | No publisher status can exceed the hard budget ceiling | ceiling bypass via reputation |
-| 14 | An unverified publisher gets a reduced default budget | unknown-code blast radius |
-| 15 | A user can explicitly allow a dangerous cap (informed opt-in) | consent preserved |
-| 16 | Publisher lookup fails safe to `unverified` on registry outage | fail-open on outage |
-| 17 | Remaining budget survives **between hook processes** | plugin-path metering |
-| 18 | The state file records the decremented budget | metering is durable, not in-memory |
-| 19 | Corrupt budget state denies rather than resetting to full | unreadable budget ≠ unlimited |
-| 20 | Wrongly-shaped budget state denies | state tampering |
-| 21 | A missing state file is first-run, not a failure | usable out of the box |
+| 9 | Tampering with **budget** invalidates the signature | forgery via unsigned fields |
+| 10 | Provenance is verifiable from one artifact (`sub` + `act` chain + parent hash) | lost "who is this for" |
+| 11 | A verified publisher gets lighter prompt friction — **not** more power | reputation ≠ authority |
+| 12 | A verified publisher still gets no dangerous cap auto-allowed | trust-based escalation |
+| 13 | `sendEmail` stays denied regardless of publisher status | exfiltration backstop |
+| 14 | No publisher status can exceed the hard budget ceiling | ceiling bypass via reputation |
+| 15 | An unverified publisher gets a reduced default budget | unknown-code blast radius |
+| 16 | A user can explicitly allow a dangerous cap (informed opt-in) | consent preserved |
+| 17 | Publisher lookup fails safe to `unverified` on registry outage | fail-open on outage |
+| 18 | Remaining budget survives **between hook processes** | plugin-path metering |
+| 19 | The state file records the decremented budget | metering is durable, not in-memory |
+| 20 | Corrupt budget state denies rather than resetting to full | unreadable budget ≠ unlimited |
+| 21 | Wrongly-shaped budget state denies | state tampering |
+| 22 | A missing state file is first-run, not a failure | usable out of the box |
+| 23 | An expired state entry reseeds instead of carrying stale budget | unbounded reset window |
+| 24 | A forged entry claiming more budget is denied | state forgery |
+| 25 | Delete-and-reseed never exceeds the signed ceiling | reset bounded, not unbounded |
 
 ```console
-1..21
-# tests 21
-# pass 21
+1..25
+# tests 25
+# pass 25
 # fail 0
 ```
 
@@ -100,7 +104,7 @@ Twenty-one fixtures, each turning a documented 2026 agent-security failure mode 
 ```bash
 npm install
 node demo.js    # the attack above, running against the real API
-npm test        # 21 fixtures, each a documented failure mode → asserted unrepresentable
+npm test        # 25 fixtures, each a documented failure mode → asserted unrepresentable
 npm run server  # boots the real MCP server (official SDK) over stdio
 ```
 
@@ -163,7 +167,7 @@ The 2026 agent stack is now reinventing exactly that permit, badly, under names 
 ```
 src/          passport core: passport.js · engine.js · policy.js · publisher.js · server.js
 plugin/       Claude Code plugin — PreToolUse hook enforcing the passport (also works on Codex/DeepSeek)
-test/         conformance + policy + plugin-persistence fixtures (21 tests)
+test/         conformance + policy + plugin-persistence fixtures (25 tests)
 docs/         wizards (START-HERE, INSTALL-PLUGIN) + ROADMAP + NAMING
 assets/       banner + architecture diagram (SVG), demo recording (gif + asciinema cast)
 demo.js       the confused-deputy attack, failing, in 40 lines
@@ -176,9 +180,10 @@ The plugin lives in `plugin/` and imports the shared core from `src/`, so it can
 ## Status & caveats
 
 > [!WARNING]
-> **Reference implementation, not production.** Three honest edges, each already visible in the code:
+> **Reference implementation, not production.** Four honest edges, each already visible in the code:
 > - **Crypto** — signing uses HMAC-SHA256 as a self-contained stand-in for real signed JWTs (RFC 9068, asymmetric keys). The **verification logic**, not the crypto, is the standardizable part.
-> - **Concurrent tool calls** — the hook persists remaining budget between invocations (fixtures 17–21), but writes are **last-write-wins**, not transactional. Two hook processes that overlap can both read the same remaining budget and the later write clobbers the earlier, so a burst of parallel calls can under-count spend. A production deployment would put this behind a daemon or a file lock.
+> - **Concurrent tool calls** — the hook persists remaining budget between invocations (fixtures 18–22), but writes are **last-write-wins**, not transactional. Two hook processes that overlap can both read the same remaining budget and the later write clobbers the earlier, so a burst of parallel calls can under-count spend. A production deployment would put this behind a daemon or a file lock.
+> - **Local state can be deleted** — deleting the local state file reseeds budget to the passport's signed ceiling — never above it — and only until the short TTL would have reset it anyway. Entries are HMAC-signed, so a *higher* remaining budget cannot be forged, only discarded (fixtures 23–25). Full reset-resistance is provably impossible with local state alone: it requires issuer-held monotonic budget state.[^caplease]
 > - **Tool mapping** — the plugin maps the repo/email demo tools explicitly; broad coverage of `Bash`/`Write`/`Edit`/`WebFetch` is an operator-configured mapping layer, not yet shipped.
 >
 > The MCP project has **no official conformance suite yet** (it's on the 2026 roadmap); these fixtures are written against the real SDK so they can be pointed at that suite when it lands.
@@ -199,3 +204,5 @@ Telescript Language Reference and Safety & Security whitepapers (General Magic, 
 ## License
 
 MIT.
+
+[^caplease]: Xu, Fan, Wang, Li & Liu, *[Beyond Single-Use Tokens: Durable Authorization State for Replay-Resistant LLM Agent Actions](https://arxiv.org/abs/2608.01710)*, arXiv:2608.01710 (2026). Shows that identifier-local token consumption cannot prevent fresh reissuance unless the issuer retains monotonic durable state over the authorized action, the confirmation event, and the remaining execution budget — which is why the delete-reset vector above is bounded here rather than closed.

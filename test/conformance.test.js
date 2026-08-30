@@ -117,6 +117,23 @@ test("tampering with caps invalidates the signature", () => {
   assert.throws(() => eng.authorizeCall(forged, "deleteFile:repoZ"), (e) => e.code === "SIG_INVALID");
 });
 
+// --- FIXTURE 8b: tampered BUDGET fails signature too
+// Regression guard. canonical() originally used JSON.stringify(body, keys),
+// whose array replacer filters keys at every nesting level — so `budget`
+// signed as {} and its values were outside the signature entirely. A passport
+// could be inflated from 2 tool calls to 999999 and still verify. Caps were
+// covered (they are an array), which is why FIXTURE 8 passed throughout.
+test("tampering with budget invalidates the signature", () => {
+  const eng = new Engine();
+  const p0 = rootP();
+  const forged = { ...p0, budget: { ...p0.budget, max_tool_calls: 999999, max_spend: 9999 } };
+  assert.equal(verifySignature(forged), false);
+  assert.throws(
+    () => eng.authorizeCall(forged, "deleteFile:repoX"),
+    (e) => e.code === "SIG_INVALID"
+  );
+});
+
 // --- FIXTURE 9: single-artifact provenance chain
 test("provenance is verifiable from one artifact (sub + act chain + parent hash)", () => {
   const p0 = rootP();

@@ -19,7 +19,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Engine, DeniedError } from "../../src/engine.js";
-import { verifySignature } from "../../src/passport.js";
+import { verifySignature, sign } from "../../src/passport.js";
 import { loadPolicy, resolve } from "../../src/policy.js";
 import { publisherStatusOffline } from "../../src/publisher.js";
 
@@ -49,12 +49,36 @@ try {
 // The path is overridable so tests can run hermetically; unset in normal use.
 const STATE = process.env.TELEKEY_STATE_PATH || join(__dir, ".passport-state.json");
 
+// Each entry is { remaining, issued, sig }, where sig is an HMAC over
+// {passportHash, remaining, issued} under the same PASSPORT_SECRET that signs
+// passports. That buys the macaroon "backtracking" property, and the bound is
+// worth stating exactly rather than hand-waving:
+//
+//   Someone who can WRITE this file cannot forge a HIGHER remaining budget,
+//   because they cannot produce a valid signature without the secret. What
+//   they CAN do is delete the file or an entry, which reseeds that passport
+//   from its own signed ceiling — never above it, and only until the TTL
+//   would have reset it anyway.
+//
+// So deletion is the residual vector, and it is BOUNDED, not closed. Closing
+// it outright is provably impossible with local state alone: it requires the
+// issuer to hold monotonic durable state (arXiv:2608.01710, CapLease). See
+// docs/ROADMAP.md — that is the authoritative-mode upgrade, not something a
+// state file can fix.
+//
 // FAIL CLOSED, without exception: an unreadable budget must never mean
 // "unlimited". A missing file is the one benign case (first run — nothing has
 // been spent yet, and each passport then seeds from its own SIGNED budget).
-// Anything else — corrupt JSON, wrong shape, unreadable — refuses the call
-// rather than silently resetting the budget to full, because "reset to full"
-// is exactly the outcome an attacker who can scribble on this file wants.
+// Corrupt JSON, a wrong shape, a bad signature, or a failed write all refuse
+// the call, because "reset to full" is exactly what an attacker scribbling on
+// this file wants.
+
+const ISSUED = new Map(); // passportHash -> wall-clock ms of the FIRST write
+
+function entrySignature(passportHash, remaining, issued) {
+  return sign({ passportHash, remaining, issued });
+}
+
 function loadState() {
   let raw;
   try {
@@ -72,19 +96,45 @@ function loadState() {
   if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
     deny("budget state is not an object — refusing rather than resetting the budget (fail-closed).");
   }
-  for (const v of Object.values(parsed)) {
-    if (v === null || typeof v !== "object" || Array.isArray(v)) {
+
+  const now = Date.now();
+  const live = {};
+  for (const [h, entry] of Object.entries(parsed)) {
+    const shapeOk =
+      entry && typeof entry === "object" && !Array.isArray(entry) &&
+      entry.remaining && typeof entry.remaining === "object" && !Array.isArray(entry.remaining) &&
+      typeof entry.issued === "number" && typeof entry.sig === "string";
+    if (!shapeOk) {
       deny("budget state has a malformed entry — refusing rather than resetting (fail-closed).");
     }
+    // Anti-forgery: a raised `remaining` cannot be fabricated without the secret.
+    if (entrySignature(h, entry.remaining, entry.issued) !== entry.sig) {
+      deny("budget state entry signature invalid — refusing rather than trusting it (fail-closed).");
+    }
+    // TTL: an expired lease is dropped, so this passport reseeds from its own
+    // signed budget — deliberately the same path as a missing file. This is
+    // what bounds the delete-reset window: a reseeded budget was about to be
+    // reseeded by expiry anyway.
+    const ttl = entry.remaining.ttl_seconds;
+    if (typeof ttl === "number" && (now - entry.issued) / 1000 > ttl) continue;
+
+    ISSUED.set(h, entry.issued);
+    live[h] = entry.remaining;
   }
-  return parsed;
+  return live;
 }
 
 // A budget we cannot record is a budget we cannot enforce on the next call, so
 // a failed write denies too. The on-disk state is left untouched in that case.
+// `issued` is stamped once and carried forward, never refreshed — otherwise the
+// TTL window would slide on every call and the lease would never expire.
 function saveState() {
+  const now = Date.now();
   const out = {};
-  for (const [h, budget] of engine.remaining) out[h] = budget;
+  for (const [h, remaining] of engine.remaining) {
+    const issued = ISSUED.get(h) ?? now;
+    out[h] = { remaining, issued, sig: entrySignature(h, remaining, issued) };
+  }
   try {
     writeFileSync(STATE, JSON.stringify(out, null, 2));
   } catch (e) {
