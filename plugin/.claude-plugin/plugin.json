@@ -1,6 +1,6 @@
 {
   "name": "telekey",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Give each agent a key scoped to one job that can only narrow, never widen. A prompt-injected agent reaches for a capability it was never given \u2014 the call is blocked before it runs. Enforced on every tool call via a PreToolUse hook.",
   "author": "stefans71",
   "license": "MIT",

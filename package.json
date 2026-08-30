@@ -1,6 +1,6 @@
 {
   "name": "telekey-mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "description": "Reference MCP gateway implementing the Capability Passport delegation extension",
   "scripts": {
