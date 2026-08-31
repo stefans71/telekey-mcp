@@ -28,6 +28,7 @@
     --fs-body:    calc(1rem    * var(--font-scale));
     --fs-lede:    calc(1.06rem * var(--font-scale));
     --fs-zone:    calc(1rem    * var(--font-scale));
+    --fs-step:    calc(1rem    * var(--font-scale));
     --fs-block:   calc(1.12rem * var(--font-scale));
     --fs-h1:      calc(1.5rem  * var(--font-scale));
     --fs-verdict: calc(1.4rem  * var(--font-scale));
@@ -120,7 +121,7 @@
   .zone:hover{transform:translateY(-2px);box-shadow:var(--shadow-hi);border-color:var(--hair-str)}
   .zone h3{margin:0 0 .1rem;font-size:var(--fs-zone);font-weight:700;color:var(--ink);
            letter-spacing:.01em;border-left:3px solid var(--brand);padding-left:.55rem}
-  .block.off .zone h3{border-left-color:var(--dim);color:var(--mute)}
+  .block.off .zone h3{border-left-color:var(--mute);color:var(--ink)}
   .zone .note{font-size:var(--fs-small);color:var(--dim);margin:.3rem 0 .85rem;padding-left:.55rem}
 
   .cap{display:block;padding:.16rem 0;font-size:var(--fs-body);overflow-wrap:anywhere}
@@ -132,13 +133,23 @@
   .row .val{color:var(--ink);font-weight:600;overflow-wrap:anywhere;min-width:0}
   .none{color:var(--mute);font-style:italic;font-size:var(--fs-small)}
 
-  .step{display:flex;align-items:flex-start;gap:.55rem;padding:.28rem 0;color:var(--dim);
-        font-size:var(--fs-small);overflow-wrap:anywhere}
+  .step{display:flex;align-items:flex-start;gap:.6rem;padding:.34rem 0;color:var(--dim);
+        font-size:var(--fs-step);overflow-wrap:anywhere;line-height:1.45}
   .step .dot{width:.55rem;height:.55rem;border-radius:50%;background:#30363d;flex:0 0 auto;
              margin-top:.4rem;transition:background var(--ease)}
   .step.fired{color:var(--ink)} .step.fired .dot{background:var(--brand)}
   .step.threw{color:var(--red-hi);font-weight:600} .step.threw .dot{background:var(--red-hi)}
-  .step.off{opacity:.4}
+  /* OFF is running unprotected, not disabled — keep it legible, just ungated */
+  .step.bypass{color:var(--mute);opacity:1}
+  .step.bypass .dot{background:transparent;border:1px solid var(--mute)}
+  .step.waiting{opacity:.5}
+  .step.waiting .dot{background:#30363d}
+  .cap.active{background:rgba(57,197,207,.12);border-radius:4px;
+              box-shadow:-.5rem 0 0 rgba(57,197,207,.12), .5rem 0 0 rgba(57,197,207,.12)}
+  .askline{margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--hair);
+           font-size:var(--fs-small);color:var(--dim)}
+  .askline b{color:var(--brand);font-weight:700;overflow-wrap:anywhere}
+  .askline .miss{color:var(--red-hi)}
 
   .out{border-radius:8px;padding:.75rem .9rem;margin-bottom:.65rem;background:var(--panel2);
        border:1px solid var(--hair);border-left:5px solid var(--dim);
@@ -254,7 +265,7 @@
 <header class="hero">
   <p class="eyebrow">Watch a prompt injection hit a wall</p>
   <h1>A capability key for MCP agents — scoped access that can only ever <span class="k">narrow</span>, never widen.</h1>
-  <p class="lede">When an agent is prompt-injected, <b>the capability it reaches for was never in its key.</b> The attack has nowhere to go.</p>
+  <p class="lede">Your agent connects to MCP servers. Every action it takes is scoped to the permissions you granted — <b>nothing more.</b> So when something goes wrong — a bad instruction, a compromised tool, a hijacked sub-agent — the damage is bounded to what you already allowed.</p>
   <p class="lede where">Works with Claude Code, Codex, and any MCP agent, via a <code>PreToolUse</code> hook.</p>
 </header>
 
@@ -803,22 +814,11 @@ const STEP_LABELS = [
   ["log",       "4 · log — provenance"],
 ];
 
-function engineZone(fired, threw, enforcing) {
-  return STEP_LABELS.map(([k, label]) => {
-    let cls = "step";
-    if (!enforcing) cls += " off";
-    else if (threw.has(k)) cls += " threw";
-    else if (fired.includes(k)) cls += " fired";
-    return `<div class="${cls}"><span class="dot"></span><span>${esc(label)}</span></div>`;
-  }).join("") + (enforcing ? "" :
-    `<div class="none" style="margin-top:.7rem">Engine bypassed — no key to check.</div>`);
-}
-
 // ---------------------------------------------------------------- the runner
 // THE ONLY path that produces enforced results. Both the resting render and
-// PLAY call this; PLAY simply passes a delay. There is no separate animation
-// script that could drift from the engine — a card marked BLOCKED can only be
-// produced by a real throw from authorizeCall()/attenuate() below.
+// PLAY call it; PLAY just passes a step delay and awaits the per-call
+// walkthrough. There is no separate animation script that could drift from the
+// engine — a card marked BLOCKED can only come from a real throw below.
 async function runEnforced(sc, { stepDelay = 0, onStep } = {}) {
   const engine = new Engine();
   const p0 = await mintRoot(sc.root);
@@ -832,14 +832,14 @@ async function runEnforced(sc, { stepDelay = 0, onStep } = {}) {
           { addActor: action.actor, caps: action.caps, budget: action.budget }));
     const step = { action, res, fired: [...engine.steps] };
     results.push(step);
-    if (onStep) onStep({ p0, p1, results });
+    if (onStep) await onStep({ p0, p1, results });
   }
   return { p0, p1, results };
 }
 
-// A slot whose real call has not returned yet. Deliberately carries no
-// verdict, no colour and no code — it must be impossible for a placeholder to
-// imply an outcome the engine has not actually produced.
+// A slot whose real call has not returned yet. Deliberately carries no verdict,
+// no colour and no code — a placeholder must never imply an outcome the engine
+// has not actually produced.
 function pendingCard(action) {
   return `<div class="out pending">
     <div class="out-head">${esc(action.label)}</div>
@@ -847,104 +847,229 @@ function pendingCard(action) {
     <div class="reason">awaiting the engine</div></div>`;
 }
 
-function outCard(step, pending) {
+function outCard(step) {
   const { action, res } = step;
   if (res.ok) {
     const rem = res.value?.remaining;
-    return `<div class="out pass${pending ? " pending" : ""}">
+    return `<div class="out pass">
       <div class="out-head">${esc(action.label)}</div>
       <div class="verdict">ALLOWED</div>
       <div class="reason">${esc(action.allowNote ?? "")}${rem ? " · budget now " + esc(fmtBudget(rem)) : ""}</div></div>`;
   }
-  return `<div class="out block${pending ? " pending" : ""}">
+  return `<div class="out block">
     <div class="out-head">${esc(action.label)}</div>
     <div class="verdict">BLOCKED</div>
     <div class="code">${esc(res.code)}</div>
     <div class="reason">${esc(action.denyNote ?? res.message ?? "")}</div></div>`;
 }
 
-function renderEnforced({ p0, p1, results }, revealCount) {
-  const shown = revealCount ?? results.length;
-  const fired = results.filter(s => s.res.ok).flatMap(s => s.fired);
-  const threw = new Set(results.slice(0, shown)
-    .filter(s => !s.res.ok).map(s => STEP_FOR_CODE[s.res.code]).filter(Boolean));
-  const lastRem = results.slice(0, shown).map(s => s.res.value?.remaining).filter(Boolean).pop();
+// ---------------------------------------------------------------- beats
+const BEAT = { key: 700, step: 520, out: 620, gap: 460 };
+const beat = (ms) => pause(ms);
 
-  const cap = (c) => p1.caps.includes(c)
-    ? `<span class="cap kept">✓ ${esc(c)}</span>`
-    : `<span class="cap dropped">✗ ${esc(c)}</span>`;
-  $("on-key").innerHTML = p0.caps.map(cap).join("") +
-    `<div class="row" style="margin-top:.7rem"><span class="lbl">chain</span>
-       <span class="val" style="color:var(--brand)">${esc(p1.act.join(" → "))}</span></div>` +
-    Object.entries(lastRem ?? p1.budget).map(([k, v]) =>
-      `<div class="row"><span class="lbl">${esc(k)}</span>
-        <span class="val">${esc(fmtBudgetVal(k, v))}</span></div>`).join("");
-
-  $("on-engine").innerHTML = engineZone(results.length ? fired : [], threw, true);
-  $("on-out").innerHTML = ACTIVE.actions
-    .map((action, i) => (results[i] ? outCard(results[i], false) : pendingCard(action)))
-    .join("");
-
-  // table rows come from the same real results
-  $("trace-body").innerHTML = results.slice(0, shown).map(s => {
-    const { action, res } = s;
-    const reqCap = action.kind === "call" ? action.cap : "mint " + action.caps.join(", ");
-    if (res.ok) {
-      const rem = res.value?.remaining;
-      return `<tr><td class="cap-col" data-label="Capability">✓ ${esc(reqCap)}</td>
-        <td class="verdict-col allow" data-label="Verdict">ALLOWED</td>
-        <td data-label="Why">${esc(action.allowNote ?? "")}${rem ? " · budget now " + esc(money(rem.max_spend)) : ""}</td></tr>`;
-    }
-    return `<tr><td class="cap-col" data-label="Capability">✗ ${esc(reqCap)}</td>
-      <td class="verdict-col deny" data-label="Verdict">DENIED · ${esc(res.code)}</td>
-      <td data-label="Why">${esc(action.denyNote ?? "")}</td></tr>`;
-  }).join("");
+// The REAL step chain for one call, derived from what actually executed —
+// never a fixed four-step script.
+//
+//   authorizeCall() pushes verify -> meter -> log. It never runs attenuate,
+//   so an allowed tool call legitimately leaves attenuate dark.
+//   attenuate() verifies the parent signature first, then applies the
+//   narrowing checks, so a CAPS_WIDENED throw means verify already passed.
+//
+// On a denial the chain stops at the throwing step: everything after it
+// genuinely never ran, which is the enforcement moment box 2 exists to show.
+const CALL_ORDER = ["verify", "meter", "log"];
+function chainFor(step) {
+  const { action, res, fired } = step;
+  if (action.kind === "call") {
+    if (res.ok) return fired.map(k => ({ k, state: "fired" }));
+    const t = STEP_FOR_CODE[res.code];
+    const i = CALL_ORDER.indexOf(t);
+    return CALL_ORDER.slice(0, Math.max(i, 0)).map(k => ({ k, state: "fired" }))
+      .concat([{ k: t, state: "threw" }]);
+  }
+  const t = STEP_FOR_CODE[res.code] ?? "attenuate";
+  if (res.ok) return [{ k:"verify", state:"fired" }, { k:"attenuate", state:"fired" }];
+  return t === "verify"
+    ? [{ k:"verify", state:"threw" }]
+    : [{ k:"verify", state:"fired" }, { k:t, state:"threw" }];
 }
 
-function renderUnchecked(sc, revealCount) {
-  const shown = revealCount ?? sc.unchecked.length;
+// Resting summary across every call in the run: a step counts as fired if any
+// call reached it, and as threw if any call threw there. Derived from the same
+// chainFor() the animation uses, so rest and replay can't tell different stories.
+function aggregateChain(results) {
+  const m = new Map();
+  for (const s of results) {
+    for (const c of chainFor(s)) {
+      if (c.state === "threw" || !m.has(c.k)) m.set(c.k, c.state);
+    }
+  }
+  return [...m].map(([k, state]) => ({ k, state }));
+}
+
+// shown = how much of the chain has been revealed so far (null = all of it)
+function engineZone(chain, enforcing, shown, summary) {
+  const upto = shown === undefined || shown === null ? chain.length : shown;
+  const seen = new Map(chain.slice(0, upto).map(c => [c.k, c.state]));
+  const reached = chain.slice(0, upto).length === chain.length;
+  const stopped = reached && chain.length && chain[chain.length - 1].state === "threw";
+  return STEP_LABELS.map(([k, label]) => {
+    let cls = "step";
+    if (!enforcing) cls += " bypass";
+    else if (seen.get(k) === "threw") cls += " threw";
+    else if (seen.get(k) === "fired") cls += " fired";
+    else cls += " waiting";
+    return `<div class="${cls}"><span class="dot"></span><span>${esc(label)}</span></div>`;
+  }).join("")
+  + (!enforcing
+      ? `<div class="askline">bypassed · no key to check — nothing gates this call</div>`
+      : summary
+        ? `<div class="askline">summary of all ${chain.length ? "3" : "0"} calls — press <b>Play</b> to watch them one at a time</div>`
+        : stopped
+          ? `<div class="askline"><span class="miss">chain stopped here — the remaining steps never ran</span></div>`
+          : "");
+}
+
+// ---------------------------------------------------------------- box 1
+function keyPanel(target, p0, p1, budget, askingCap) {
+  const inKey = askingCap ? (p1 ? p1.caps.includes(askingCap) : false) : null;
+  const cap = (c) => {
+    const kept = p1.caps.includes(c);
+    const active = askingCap && c === askingCap;
+    return `<span class="cap ${kept ? "kept" : "dropped"}${active ? " active" : ""}">${kept ? "✓" : "✗"} ${esc(c)}</span>`;
+  };
+  $(target).innerHTML = p0.caps.map(cap).join("") +
+    `<div class="row" style="margin-top:.7rem"><span class="lbl">chain</span>
+       <span class="val" style="color:var(--brand)">${esc(p1.act.join(" → "))}</span></div>` +
+    Object.entries(budget).map(([k, v]) =>
+      `<div class="row"><span class="lbl">${esc(k)}</span>
+        <span class="val">${esc(fmtBudgetVal(k, v))}</span></div>`).join("") +
+    (askingCap
+      ? `<div class="askline">requesting <b>${esc(askingCap)}</b>` +
+        (inKey ? "" : ` <span class="miss">— not in this key</span>`) + `</div>`
+      : "");
+}
+
+// ---------------------------------------------------------------- render ON
+// frame: { results, chain, chainShown, asking, resolved }
+function renderOn(run, frame = {}) {
+  const { p0, p1, results } = run;
+  const shownResults = frame.resolved ?? results.length;
+  const budget = results.slice(0, shownResults)
+    .map(s => s.res.value?.remaining).filter(Boolean).pop() ?? p1.budget;
+
+  keyPanel("on-key", p0, p1, budget, frame.asking ?? null);
+  const resting = frame.chain === undefined;
+  $("on-engine").innerHTML = resting
+    ? engineZone(aggregateChain(results), true, null, true)
+    : engineZone(frame.chain, true, frame.chainShown, false);
+  $("on-out").innerHTML = ACTIVE.actions
+    .map((action, i) => (i < shownResults ? outCard(results[i]) : pendingCard(action)))
+    .join("");
+  $("trace-body").innerHTML = results.slice(0, shownResults).map(traceRow).join("");
+}
+
+function traceRow(s) {
+  const { action, res } = s;
+  const reqCap = action.kind === "call" ? action.cap : "mint " + action.caps.join(", ");
+  if (res.ok) {
+    const rem = res.value?.remaining;
+    return `<tr><td class="cap-col" data-label="Capability">✓ ${esc(reqCap)}</td>
+      <td class="verdict-col allow" data-label="Verdict">ALLOWED</td>
+      <td data-label="Why">${esc(action.allowNote ?? "")}${rem ? " · budget now " + esc(money(rem.max_spend)) : ""}</td></tr>`;
+  }
+  return `<tr><td class="cap-col" data-label="Capability">✗ ${esc(reqCap)}</td>
+    <td class="verdict-col deny" data-label="Verdict">DENIED · ${esc(res.code)}</td>
+    <td data-label="Why">${esc(action.denyNote ?? "")}</td></tr>`;
+}
+
+// ---------------------------------------------------------------- render OFF
+function renderOff(frame = {}) {
+  const shown = frame.resolved ?? ACTIVE.unchecked.length;
+  const asking = frame.asking ?? null;
   $("off-key").innerHTML =
     `<div class="none">No key issued.</div>` +
     `<div class="row" style="margin-top:.5rem"><span class="lbl">authority</span>
        <span class="val" style="color:var(--red-hi)">full / ambient</span></div>` +
     `<div class="row"><span class="lbl">budget</span>
-       <span class="val" style="color:var(--red-hi)">unbounded</span></div>`;
-  $("off-engine").innerHTML = engineZone([], new Set(), false);
-  $("off-out").innerHTML = sc.unchecked.map((o, i) =>
-    `<div class="out ${o.tone}${i >= shown ? " pending" : ""}">
-      <div class="out-head">${esc(o.label)}</div>
-      <div class="verdict">${esc(o.verdict)}</div>
-      <div class="reason">${esc(o.note)}</div></div>`).join("");
+       <span class="val" style="color:var(--red-hi)">unbounded</span></div>` +
+    (asking ? `<div class="askline">requesting <b>${esc(asking)}</b>
+       <span class="miss">— nothing scopes this</span></div>` : "");
+  $("off-engine").innerHTML = engineZone([], false, null, false);
+  $("off-out").innerHTML = ACTIVE.unchecked.map((o, i) =>
+    i < shown
+      ? `<div class="out ${o.tone}"><div class="out-head">${esc(o.label)}</div>
+          <div class="verdict">${esc(o.verdict)}</div>
+          <div class="reason">${esc(o.note)}</div></div>`
+      : `<div class="out pending"><div class="out-head">${esc(o.label)}</div>
+          <div class="verdict" style="color:var(--dim)">…</div>
+          <div class="reason">in flight — nothing is checking it</div></div>`).join("");
 }
 
 // ---------------------------------------------------------------- play
 let enforcedRun = null;
+
 async function playOn(btn) {
   btn.disabled = true;
-  renderEnforced({ ...enforcedRun, results: [] });   // every slot back to placeholder
-  // Re-runs the REAL engine, one call at a time. Each slot fills only when its
-  // own authorizeCall()/attenuate() has actually returned.
-  enforcedRun = await runEnforced(ACTIVE, { stepDelay: 620, onStep: renderEnforced });
-  renderEnforced(enforcedRun);
+  // Nothing in boxes 2 or 3 is pre-resolved.
+  renderOn(enforcedRun, { resolved: 0, chain: [], chainShown: 0 });
+  await beat(BEAT.gap);
+
+  enforcedRun = await runEnforced(ACTIVE, {
+    onStep: async ({ p0, p1, results }) => {
+      const i = results.length - 1;
+      const s = results[i];
+      const run = { p0, p1, results };
+      const asking = s.action.kind === "call" ? s.action.cap : "mint " + s.action.caps.join(", ");
+
+      // beat 1 — the request leaves the key
+      renderOn(run, { resolved: i, chain: [], chainShown: 0, asking });
+      await beat(BEAT.key);
+
+      // beat 2 — the engine chain, one real step at a time
+      const chain = chainFor(s);
+      for (let n = 1; n <= chain.length; n++) {
+        renderOn(run, { resolved: i, chain, chainShown: n, asking });
+        await beat(BEAT.step);
+      }
+
+      // beat 3 — the outbound card resolves to its real verdict
+      renderOn(run, { resolved: i + 1, chain, chainShown: chain.length, asking });
+      await beat(BEAT.out);
+      await beat(BEAT.gap);
+    },
+  });
+  renderOn(enforcedRun);
   btn.disabled = false;
 }
+
 async function playOff(btn) {
   btn.disabled = true;
-  renderUnchecked(ACTIVE, 0);
+  renderOff({ resolved: 0 });
+  await beat(BEAT.gap);
   for (let i = 0; i < ACTIVE.unchecked.length; i++) {
-    await pause(620);
-    renderUnchecked(ACTIVE, i + 1);
+    const asking = ACTIVE.actions[i] ? (ACTIVE.actions[i].cap ?? ACTIVE.unchecked[i].label) : ACTIVE.unchecked[i].label;
+    renderOff({ resolved: i, asking });
+    await beat(BEAT.key);
+    // box 2 is a visible pass-through: no step gates, so the chain never lights
+    renderOff({ resolved: i, asking });
+    await beat(BEAT.step);
+    renderOff({ resolved: i + 1, asking });
+    await beat(BEAT.out);
+    await beat(BEAT.gap);
   }
+  renderOff();
   btn.disabled = false;
 }
+
 document.querySelectorAll("[data-play]").forEach(btn =>
   btn.addEventListener("click", () => (btn.dataset.play === "on" ? playOn(btn) : playOff(btn))));
 
 $("copy-btn").addEventListener("click", async () => {
-  const btn = $("copy-btn");
-  try { await navigator.clipboard.writeText($("install-cmd").textContent.trim()); btn.textContent = "Copied ✓"; }
-  catch { btn.textContent = "Select & copy"; }
-  setTimeout(() => (btn.textContent = "Copy"), 1800);
+  const b = $("copy-btn");
+  try { await navigator.clipboard.writeText($("install-cmd").textContent.trim()); b.textContent = "Copied ✓"; }
+  catch { b.textContent = "Select & copy"; }
+  setTimeout(() => (b.textContent = "Copy"), 1800);
 });
 
 // ---------------------------------------------------------------- boot
@@ -971,8 +1096,8 @@ $("copy-btn").addEventListener("click", async () => {
 
   // Resting state: both blocks fully rendered from a real run, no interaction needed.
   enforcedRun = await runEnforced(ACTIVE);
-  renderEnforced(enforcedRun);
-  renderUnchecked(ACTIVE);
+  renderOn(enforcedRun);
+  renderOff();
 })();
 </script>
 </body>
