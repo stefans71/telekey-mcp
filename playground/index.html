@@ -150,8 +150,14 @@
            font-size:var(--fs-small);color:var(--dim)}
   /* OFF has no engine at all — no step list, because those steps do not exist
      in that world. The absence is the message. */
-  .noengine{color:var(--mute);font-size:var(--fs-body);line-height:1.65;padding:.2rem 0}
-  .noengine b{color:var(--ink);font-weight:700;display:block;margin-bottom:.3rem}
+  /* The OFF block has no engine, so it gets no panel. The grid cell stays so
+     the key and outbound columns keep aligning with the ON block below, but
+     the card styling is gone entirely — it should read as empty space. */
+  .zone.ghost{background:transparent;border:none;box-shadow:none;padding:0;
+              display:flex;align-items:center;justify-content:center}
+  .zone.ghost:hover{transform:none;box-shadow:none;border-color:transparent}
+  .ghost-label{color:var(--dim);font-size:var(--fs-small);font-weight:700;
+               letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
   /* round indicator — punctuation between calls */
   .round{font-size:var(--fs-small);color:var(--brand);font-weight:700;
          margin:.4rem 0 0;min-height:1.5em}
@@ -299,7 +305,7 @@
     <div class="zones">
       <div class="zone"><h3>The scoped key</h3><p class="note">what TeleKey handed the sub-agent</p><div id="off-key"></div></div>
       <div class="arrow" aria-hidden="true">→</div>
-      <div class="zone"><h3>The TeleKey engine</h3><p class="note">not present in this setup</p><div id="off-engine"></div></div>
+      <div class="zone ghost"><span class="ghost-label">TeleKey OFF</span></div>
       <div class="arrow" aria-hidden="true">→</div>
       <div class="zone"><h3>Outbound calls</h3><p class="note">what the agent actually got to do</p><div id="off-out"></div></div>
     </div>
@@ -653,10 +659,7 @@ function renderOff(frame = {}) {
        <span class="val" style="color:var(--red-hi)">unbounded</span></div>` +
     (asking ? `<div class="askline">requesting <b>${esc(asking)}</b>
        <span class="miss">— nothing scopes this</span></div>` : "");
-  // No step list here: the four steps belong to TeleKey, and TeleKey is not
-  // present in this block. Showing them greyed would imply they exist.
-  $("off-engine").innerHTML =
-    `<div class="noengine"><b>No TeleKey here.</b>Nothing checks this call before it runs.</div>`;
+  // Nothing to render in the OFF middle cell — it is deliberately empty.
   $("off-out").innerHTML = ACTIVE.unchecked.map((o, i) =>
     i < shown
       ? `<div class="out ${o.tone}"><div class="out-head">${esc(o.label)}</div>
