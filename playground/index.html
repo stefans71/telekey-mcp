@@ -117,7 +117,15 @@
 
   /* ---------- scenario blocks ---------- */
   .block{margin-bottom:2rem}
-  .block-head{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem}
+  /* The OFF block's opening rule rides on its eyebrow; the ON block has no
+     eyebrow, so it carries its own. Same weight and colour. */
+  .block.on{border-top:1px solid var(--hair);padding-top:1.5rem;margin-top:2.5rem}
+  /* The label group is closed off by a matching hairline before the cards, so
+     it reads as [rule] eyebrow/heading/subtitle [rule] cards. Same 1px
+     var(--hair) as the opening rule, so the two read as a pair. */
+  .block-head{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;
+              padding-bottom:.9rem;border-bottom:1px solid var(--hair);
+              margin-bottom:1.15rem}
   .block-title{font-size:var(--fs-block);font-weight:700;margin:0;letter-spacing:-.01em}
   /* Both section headings are the same colour and weight on purpose: the
      on/off contrast belongs in the cards below, not in how readable the
