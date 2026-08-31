@@ -29,12 +29,13 @@
     --fs-zone:    calc(1rem    * var(--font-scale));
     --fs-step:    calc(1rem    * var(--font-scale));
     --fs-block:   calc(1.12rem * var(--font-scale));
-    --fs-h1:      calc(1.5rem  * var(--font-scale));
+    --fs-h1:      calc(2.15rem * var(--font-scale));
     --fs-verdict: calc(1.4rem  * var(--font-scale));
 
     --bg:#0d1117; --panel:#161b22; --panel2:#1b222c; --sunk:#010409;
     --hair:rgba(240,246,252,.10); --hair-str:rgba(240,246,252,.20);
     --ink:#e6edf3; --mute:#9ba5b4; --dim:#868f9b;
+    --label:#c0c8d1;   /* structural labels — 11.20:1 on --bg */
 
     --brand:#39c5cf; --brand-hi:#7fe3ea; --brand-dim:rgba(57,197,207,.14);
     --green:#3fb950; --green-hi:#56d364;
@@ -86,15 +87,25 @@
            color:var(--dim);font-weight:700;margin:0 0 .6rem}
   /* Section divider between the hero and the demo. Same eyebrow treatment as
      every other label on the page, just given rules and room of its own. */
-  .section-eyebrow{margin:1.75rem 0 1.75rem;padding:1.1rem 0;
-                   border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
-  h1{font-size:var(--fs-h1);font-weight:700;margin:0 0 .75rem;letter-spacing:-.015em;
-     line-height:1.25;max-width:46ch}
+  /* Sits tight to the heading it introduces: generous room above to separate
+     it from the hero, minimal room below so it reads as a label ON the section
+     rather than floating between the two. */
+  .section-eyebrow{margin:2.25rem 0 .5rem;padding:1.1rem 0 0;
+                   border-top:1px solid var(--hair);color:var(--label)}
+  h1{font-size:var(--fs-h1);font-weight:700;margin:0 0 1rem;letter-spacing:-.02em;
+     line-height:1.15;max-width:22ch;color:var(--ink)}
   h1 .k{color:var(--brand)}
   .lede{margin:0 0 .35rem;font-size:var(--fs-lede);color:var(--mute);max-width:70ch;line-height:1.5}
   .lede.where{color:var(--dim);font-size:var(--fs-small);margin-top:1.1rem;
               padding-top:.75rem;border-top:1px solid var(--hair);max-width:56ch}
   .lede b{color:var(--ink);font-weight:600}
+  .lede.lead{color:var(--ink);margin-bottom:.8rem}
+  .lede.lead b{font-weight:700}
+  .points{list-style:none;margin:0 0 .9rem;padding:0;max-width:70ch}
+  .points li{position:relative;padding-left:1.4rem;margin:.4rem 0;
+             font-size:var(--fs-lede);color:var(--mute);line-height:1.5}
+  .points li::before{content:"•";position:absolute;left:.3rem;top:0;
+                     color:var(--brand);font-weight:700}
 
   #fatal{display:none;border:1px solid var(--red);background:#2a1315;border-radius:10px;
          padding:1.25rem;margin-bottom:1.5rem}
@@ -105,8 +116,10 @@
   .block{margin-bottom:2rem}
   .block-head{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem}
   .block-title{font-size:var(--fs-block);font-weight:700;margin:0;letter-spacing:-.01em}
-  .block.off .block-title{color:var(--mute)}
-  .block.on  .block-title{color:var(--ink)}
+  /* Both section headings are the same colour and weight on purpose: the
+     on/off contrast belongs in the cards below, not in how readable the
+     heading is. */
+  .block .block-title{color:var(--ink)}
   .block-sub{font-size:var(--fs-small);color:var(--dim);margin:0}
   .play{font-family:var(--mono);font-size:var(--fs-small);font-weight:700;
         color:var(--brand);background:transparent;border:1px solid var(--brand);
@@ -160,7 +173,9 @@
   .zone.ghost{background:transparent;border:none;box-shadow:none;padding:0;
               display:flex;align-items:center;justify-content:center}
   .zone.ghost:hover{transform:none;box-shadow:none;border-color:transparent}
-  .ghost-label{color:var(--dim);font-size:var(--fs-small);font-weight:700;
+  /* Neutral, not brand cyan: cyan reads as "TeleKey is here and working",
+     which is the opposite of what this label says. */
+  .ghost-label{color:var(--label);font-size:var(--fs-body);font-weight:700;
                letter-spacing:.18em;text-transform:uppercase;white-space:nowrap}
   /* round indicator — punctuation between calls */
   .round{font-size:var(--fs-small);color:var(--brand);font-weight:700;
@@ -282,8 +297,14 @@
 <div class="wrap">
 
 <header class="hero">
-  <h1>A capability key for MCP agents — scoped access that can only ever <span class="k">narrow</span>, never widen.</h1>
-  <p class="lede">Your agent connects to MCP servers. Every action it takes is scoped to the permissions you granted — <b>nothing more.</b> So when something goes wrong — a bad instruction, a compromised tool, a hijacked sub-agent — the damage is bounded to what you already allowed.</p>
+  <h1>Scoped access for MCP agents.</h1>
+  <p class="lede lead"><b>Your agent connects to MCP servers — and everything it does stays inside the permissions you granted.</b></p>
+  <ul class="points">
+    <li>Every action is scoped — nothing runs unchecked.</li>
+    <li>A hijacked or confused agent can't reach past what you allowed.</li>
+    <li>Sub-agents get less access, never more.</li>
+  </ul>
+  <p class="lede">So when something goes wrong — a bad instruction, a compromised tool, a prompt injection — the damage is already bounded.</p>
   <p class="lede where">Works with Claude Code, Codex, and any MCP agent, via a <code>PreToolUse</code> hook.</p>
 </header>
 
