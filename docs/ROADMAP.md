@@ -28,7 +28,7 @@ If none of those three hold up on contact with users, that's the signal to fold 
 Framed in phases, not dates — a solo/small effort should gate on validation, not calendar.
 
 ### Phase 0 — Reference (done)
-The current repo: passport core, engine, real MCP server, 25 fixtures across conformance/policy/plugin-persistence, diagrams, CI. This exists to make the idea *concrete and testable*, not to be run in production.
+The current repo: passport core, engine, real MCP server, 29 tests (25 failure-mode fixtures plus build guards), diagrams, CI. This exists to make the idea *concrete and testable*, not to be run in production.
 
 ### Phase 1 — Credibility
 The goal is "a serious person could evaluate this in an afternoon."

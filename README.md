@@ -46,6 +46,14 @@ The injection still happened. It just had **nowhere to go** — `sendEmail` was 
 > [!NOTE]
 > **It limits the damage — it doesn't prevent the compromise.** A scoped key bounds what a hijacked agent can reach; it doesn't stop the hijack. Blocking the manipulation itself has to happen upstream. TeleKey does the first job well and makes no claim on the second.
 
+## The system, at a glance
+
+<p align="center">
+  <img src="assets/telekey-diagram.gif" alt="TeleKey system diagram: an agent's authorized call passes through the TeleKey gate to the MCP server while an unauthorized call is blocked at the gate; a scoped key is delegated to a sub-agent; the result returns to the agent bypassing TeleKey." width="100%">
+</p>
+
+<sub>Green is authorized, red is blocked, amber is the narrowed sub-agent key, cyan is identity. The animated version is inlined as SVG on the <a href="https://telekey.data-analytics.space">live demo</a>; source in <code>assets/telekey-diagram.html</code>.</sub>
+
 ## Install into Claude Code (one command)
 
 This repo *is* a plugin marketplace. Point Claude Code at it and install — no clone, no build:
@@ -67,7 +75,7 @@ In the code this key is a signed **capability passport**; "key" and "passport" a
 
 ## What it stops
 
-Twenty-five fixtures, each turning a documented 2026 agent-security failure mode into a pass/fail assertion. Every line below is backed by a passing test in [`test/`](test/) — run `npm test` to see them go green.
+Twenty-five fixtures, each turning a documented 2026 agent-security failure mode into a pass/fail assertion. Every line below is backed by a passing test in [`test/`](test/) — run `npm test` to see them go green. The suite runs **29** tests in total: these 25 plus four build-integrity guards that keep the playground's parity vectors and standalone build from drifting from the engine.
 
 | # | What the test proves | Failure mode it closes |
 |:---:|---|---|
@@ -98,9 +106,9 @@ Twenty-five fixtures, each turning a documented 2026 agent-security failure mode
 | 25 | Delete-and-reseed never exceeds the signed ceiling | reset bounded, not unbounded |
 
 ```console
-1..25
-# tests 25
-# pass 25
+1..29
+# tests 29
+# pass 29
 # fail 0
 ```
 
@@ -109,7 +117,7 @@ Twenty-five fixtures, each turning a documented 2026 agent-security failure mode
 ```bash
 npm install
 node demo.js    # the attack above, running against the real API
-npm test        # 25 fixtures, each a documented failure mode → asserted unrepresentable
+npm test        # 29 tests — 25 failure-mode fixtures + 4 build-integrity guards
 npm run server  # boots the real MCP server (official SDK) over stdio
 ```
 
@@ -172,7 +180,7 @@ The 2026 agent stack is now reinventing exactly that permit, badly, under names 
 ```
 src/          passport core: passport.js · engine.js · policy.js · publisher.js · server.js
 plugin/       Claude Code plugin — PreToolUse hook enforcing the passport (also works on Codex/DeepSeek)
-test/         conformance + policy + plugin-persistence fixtures (25 tests)
+test/         conformance + policy + plugin-persistence + build guards (29 tests)
 docs/         wizards (START-HERE, INSTALL-PLUGIN) + ROADMAP + NAMING
 assets/       banner + architecture diagram (SVG), demo recording (gif + asciinema cast)
 demo.js       the confused-deputy attack, failing, in 40 lines

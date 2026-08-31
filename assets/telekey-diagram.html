@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeleKey — System Diagram</title>
+<style>
+  :root{
+    --bg:#0d1117;
+    --line:#c9d1d9;         /* neutral line-art */
+    --line-dim:#5a6472;     /* dimmed strokes */
+    --cyan:#39c5cf;         /* brand identity */
+    --green:#4ade80;        /* ALLOWED */
+    --red:#f87171;          /* BLOCKED */
+    --amber:#fbbf24;        /* scoped key */
+    --stencil:"Courier New", ui-monospace, monospace;
+  }
+  html,body{margin:0;background:var(--bg);}
+  .wrap{
+    max-width:1120px;margin:0 auto;padding:32px 20px;
+    font-family:var(--stencil);
+  }
+  svg{width:100%;height:auto;display:block;}
+
+  /* ---- static line-art defaults ---- */
+  .box{fill:none;stroke:var(--line);stroke-width:2;}
+  .box-inner{fill:none;stroke:var(--line);stroke-width:1;opacity:.5;}
+  .lbl{fill:var(--line);font-family:var(--stencil);font-weight:700;letter-spacing:1px;}
+  .lbl-sm{fill:var(--line);font-family:var(--stencil);letter-spacing:1px;}
+  .lbl-cyan{fill:var(--cyan);font-family:var(--stencil);letter-spacing:1px;}
+  .callout circle{fill:var(--bg);stroke:var(--line);stroke-width:1.5;}
+  .callout text{fill:var(--line);font-family:var(--stencil);font-size:15px;text-anchor:middle;}
+  .path-base{fill:none;stroke:var(--line);stroke-width:2;}
+  .path-dash{fill:none;stroke:var(--line);stroke-width:2;stroke-dasharray:7 6;}
+  .path-return{fill:none;stroke:var(--line-dim);stroke-width:1.5;}
+  .key{fill:none;stroke:var(--line);stroke-width:2;}
+  .arrowhead{fill:var(--line);}
+  .header-txt{fill:var(--line);font-family:var(--stencil);letter-spacing:2px;}
+  .rule{stroke:var(--line);stroke-width:1;}
+
+  /* ---- animated overlays (draw on top of base paths) ---- */
+  .flow{fill:none;stroke-linecap:round;}
+
+  /* ============================================================
+     SEQUENCED TIMELINE — one 8s loop, phases wait for each other
+     0.0–1.6s  leg1: agent -> gate
+     1.6–2.4s  gate confirms (green ring)
+     2.4–4.0s  leg2: gate -> mcp
+     4.0–4.8s  mcp arrival ring
+     (red wave rides leg1 timing; stops+pulses at gate ~1.6s)
+     (amber branch fires after gate confirm, ~2.4–3.6s)
+     (return sweep late, ~5.0–7.2s)
+     ============================================================ */
+  .flow-auth1{
+    stroke:var(--green);stroke-width:3.5;
+    filter:drop-shadow(0 0 5px var(--green));
+    stroke-dasharray:30 260; stroke-dashoffset:290;
+    animation:leg1 8s linear infinite;
+  }
+  @keyframes leg1{
+    0%   {stroke-dashoffset:290; opacity:0;}
+    1%   {opacity:1;}
+    20%  {stroke-dashoffset:30;  opacity:1;}   /* arrives gate at 1.6s */
+    24%  {opacity:0;}                            /* absorbed into gate */
+    100% {stroke-dashoffset:30;  opacity:0;}
+  }
+  .flow-auth2{
+    stroke:var(--green);stroke-width:3.5;
+    filter:drop-shadow(0 0 5px var(--green));
+    stroke-dasharray:30 300; stroke-dashoffset:330;
+    animation:leg2 8s linear infinite;
+  }
+  @keyframes leg2{
+    0%,30%  {stroke-dashoffset:330; opacity:0;}  /* wait through leg1 + gate confirm */
+    31%     {opacity:1;}
+    50%     {stroke-dashoffset:30;  opacity:1;}   /* arrives mcp at 4.0s */
+    54%     {opacity:0;}
+    100%    {stroke-dashoffset:30;  opacity:0;}
+  }
+
+  .gate-confirm{
+    fill:none;stroke:var(--green);stroke-width:2.5;opacity:0;
+    animation:gateConfirm 8s ease-out infinite;
+  }
+  @keyframes gateConfirm{
+    0%,20%{opacity:0;transform:scale(.5);}       /* fires when leg1 arrives */
+    24%{opacity:.7;transform:scale(.9);}
+    30%{opacity:0;transform:scale(1.4);}          /* clears before leg2 */
+    100%{opacity:0;}
+  }
+
+  .mcp-pulse{
+    fill:none;stroke:var(--green);stroke-width:2.5;opacity:0;
+    animation:mcpPulse 8s ease-out infinite;
+  }
+  @keyframes mcpPulse{
+    0%,50%{opacity:0;transform:scale(.4);}       /* fires when leg2 arrives */
+    55%{opacity:.6;transform:scale(.85);}
+    66%{opacity:0;transform:scale(1.4);}
+    100%{opacity:0;}
+  }
+
+  .flow-block{
+    stroke:var(--red);stroke-width:3.5;
+    filter:drop-shadow(0 0 5px var(--red));
+    stroke-dasharray:34 260; stroke-dashoffset:294;
+    animation:blockWave 8s linear infinite;
+  }
+  @keyframes blockWave{
+    0%  {stroke-dashoffset:294;opacity:0;}
+    1%  {opacity:1;}
+    20% {stroke-dashoffset:34; opacity:1;}         /* reaches gate same time as leg1 */
+    24% {opacity:0;}
+    100%{stroke-dashoffset:34; opacity:0;}
+  }
+  .block-reject{
+    fill:var(--red);opacity:0;
+    animation:blockReject 8s ease-in-out infinite;
+  }
+  @keyframes blockReject{
+    0%,20%{opacity:0;transform:scale(.5);}         /* fires when red reaches gate */
+    25%{opacity:.65;transform:scale(1);}
+    34%{opacity:.2;transform:scale(1.2);}
+    42%{opacity:.55;transform:scale(1);}           /* breathe once */
+    52%{opacity:0;transform:scale(1.3);}
+    100%{opacity:0;}
+  }
+
+  .flow-scope{
+    stroke:var(--amber);stroke-width:3.5;
+    filter:drop-shadow(0 0 5px var(--amber));
+    stroke-dasharray:26 220; stroke-dashoffset:246;
+    animation:scopeWave 8s linear infinite;
+  }
+  @keyframes scopeWave{
+    0%,30%{stroke-dashoffset:246;opacity:0;}       /* after gate confirm */
+    32%{opacity:1;}
+    46%{stroke-dashoffset:26; opacity:1;}
+    50%{opacity:0;}
+    100%{stroke-dashoffset:26; opacity:0;}
+  }
+  .subkey-pulse{
+    fill:var(--amber);opacity:0;
+    animation:subkeyPulse 8s ease-out infinite;
+  }
+  @keyframes subkeyPulse{
+    0%,46%{opacity:0;transform:scale(.5);}
+    52%{opacity:.6;transform:scale(1);}
+    64%{opacity:0;transform:scale(1.3);}
+    100%{opacity:0;}
+  }
+
+  .flow-return{
+    stroke:var(--cyan);stroke-width:2.5;opacity:.5;
+    filter:drop-shadow(0 0 4px var(--cyan));
+    stroke-dasharray:30 2000; stroke-dashoffset:0;
+    animation:returnSweep 8s linear infinite;
+  }
+  @keyframes returnSweep{
+    0%,62%{stroke-dashoffset:0;opacity:0;}         /* after mcp arrival */
+    64%{opacity:.5;}
+    90%{stroke-dashoffset:-1400;opacity:.5;}
+    94%{opacity:0;}
+    100%{stroke-dashoffset:-1400;opacity:0;}
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    .flow-auth1,.flow-auth2,.flow-block,.flow-scope,.flow-return,
+    .gate-confirm,.mcp-pulse,.block-reject,.subkey-pulse{
+      animation:none;
+    }
+    /* static end-state: authorized lit through, blocked stopped at gate */
+    .flow-auth1{stroke-dashoffset:30;opacity:.9;stroke-dasharray:none;}
+    .flow-auth2{stroke-dashoffset:30;opacity:.9;stroke-dasharray:none;}
+    .flow-block{opacity:0;}
+    .block-reject{opacity:.5;transform:scale(1);}
+    .flow-scope{opacity:0;}
+    .subkey-pulse{opacity:.5;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<!-- viewBox chosen for a wide patent-plate aspect -->
+<svg viewBox="0 0 1120 745" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="TeleKey system diagram: an agent's authorized call passes through the TeleKey gate to the MCP server while an unauthorized call is blocked at the gate; a scoped key is delegated to a sub-agent; the result returns to the agent bypassing TeleKey.">
+
+  <!-- ===== header flourishes ===== -->
+  <text class="header-txt" x="60"  y="36" font-size="11" fill="#8b95a3" letter-spacing="2">MODELED AFTER</text>
+  <text class="header-txt" x="60"  y="54" font-size="14">TELESCRIPT'S PERMIT · 1995</text>
+  <text class="header-txt" x="560" y="34" font-size="16" text-anchor="middle" letter-spacing="3">TELEKEY CONTROL SYSTEM</text>
+  <text class="header-txt" x="560" y="56" font-size="13" text-anchor="middle" fill="#8b95a3">SYSTEM DIAGRAM</text>
+  <line class="rule" x1="60" y1="70" x2="1060" y2="70" opacity=".3"/>
+
+  <!-- ===== boxes ===== -->
+  <!-- AGENT -->
+  <rect class="box" x="70"  y="230" width="170" height="130" rx="2"/>
+  <rect class="box-inner" x="78" y="238" width="154" height="114"/>
+  <text class="lbl" x="155" y="300" font-size="22" text-anchor="middle">AGENT</text>
+
+  <!-- TELEKEY gate (arch) -->
+  <g>
+    <path class="box" d="M470 360 L470 250 A80 80 0 0 1 630 250 L630 360 Z"/>
+    <rect class="box" x="458" y="358" width="184" height="14"/>
+    <text class="lbl" x="550" y="250" font-size="20" text-anchor="middle">TELEKEY</text>
+    <!-- key icon -->
+    <g class="key" transform="translate(524,278)">
+      <circle cx="14" cy="20" r="13"/>
+      <line x1="27" y1="20" x2="72" y2="20"/>
+      <line x1="60" y1="20" x2="60" y2="33"/>
+      <line x1="70" y1="20" x2="70" y2="30"/>
+    </g>
+    <!-- gate confirm pulse origin -->
+    <circle class="gate-confirm" cx="550" cy="300" r="46" style="transform-origin:550px 300px;fill:none;stroke:var(--green);stroke-width:2.5;"/>
+    <!-- block rejection pulse origin (left face of gate) -->
+    <circle class="block-reject" cx="462" cy="330" r="18" style="transform-origin:462px 330px;"/>
+  </g>
+
+  <!-- MCP SERVER / TOOLS -->
+  <rect class="box" x="900" y="230" width="170" height="130" rx="2"/>
+  <rect class="box-inner" x="908" y="238" width="154" height="114"/>
+  <text class="lbl" x="985" y="288" font-size="17" text-anchor="middle">MCP SERVER /</text>
+  <text class="lbl" x="985" y="312" font-size="17" text-anchor="middle">TOOLS</text>
+  <circle class="mcp-pulse" cx="985" cy="295" r="70" style="transform-origin:985px 295px;fill:none;stroke:var(--green);stroke-width:2.5;"/>
+
+  <!-- SUB-AGENT -->
+  <rect class="box" x="465" y="560" width="170" height="90" rx="2"/>
+  <rect class="box-inner" x="473" y="568" width="154" height="74"/>
+  <text class="lbl" x="550" y="600" font-size="17" text-anchor="middle">SUB-AGENT</text>
+  <g class="key" transform="translate(516,612)" stroke-width="1.6">
+    <circle cx="10" cy="14" r="9"/>
+    <line x1="19" y1="14" x2="52" y2="14"/>
+    <line x1="44" y1="14" x2="44" y2="23"/>
+    <line x1="50" y1="14" x2="50" y2="22"/>
+  </g>
+  <circle class="subkey-pulse" cx="526" cy="626" r="22" style="transform-origin:526px 626px;"/>
+
+  <!-- ===== base paths ===== -->
+  <!-- authorized: agent -> gate -> mcp  (id for measuring) -->
+  <path id="pAuth" class="path-base" d="M240 295 L470 295 M630 295 L900 295"/>
+  <polygon class="arrowhead" points="470,295 458,289 458,301"/>
+  <polygon class="arrowhead" points="900,295 888,289 888,301"/>
+  <text class="lbl-sm" x="355" y="282" font-size="14" text-anchor="middle">REQUEST / CALL</text>
+  <text class="lbl-cyan" x="765" y="282" font-size="14" text-anchor="middle">AUTHORIZED — PASSES</text>
+
+  <!-- blocked: agent -> gate (dashed), stops -->
+  <path id="pBlock" class="path-dash" d="M240 335 L455 335"/>
+  <!-- little deflection marks at gate -->
+  <path class="path-base" d="M452 322 L468 335 L452 348" stroke-width="1.5" fill="none"/>
+  <text class="lbl-sm" x="345" y="360" font-size="14" text-anchor="middle" fill="#8b95a3">UNAUTHORIZED — BLOCKED</text>
+
+  <!-- scoped key: gate -> sub-agent -->
+  <path id="pScope" class="path-base" d="M550 372 L550 560"/>
+  <polygon class="arrowhead" points="550,560 544,548 556,548"/>
+  <text class="lbl-cyan" x="690" y="462" font-size="14" text-anchor="middle">SCOPED KEY —</text>
+  <text class="lbl-cyan" x="690" y="482" font-size="14" text-anchor="middle">NARROWED</text>
+
+  <!-- result returns: mcp -> down -> across -> up -> agent (bypasses telekey) -->
+  <path id="pReturn" class="path-return" d="M985 360 L985 690 L155 690 L155 360"/>
+  <polygon class="arrowhead" points="155,360 149,372 161,372" fill="#5a6472"/>
+  <text class="lbl-sm" x="570" y="726" font-size="14" text-anchor="middle" fill="#8b95a3">RESULT RETURNS &#8212; BYPASSES TELEKEY</text>
+  <path class="flow flow-auth1" d="M240 295 L470 295"/>
+  <path class="flow flow-auth2" d="M630 295 L900 295"/>
+  <path class="flow flow-block" d="M240 335 L455 335"/>
+  <path class="flow flow-scope" d="M550 372 L550 560"/>
+  <path class="flow flow-return" d="M985 360 L985 690 L155 690 L155 360"/>
+
+  <!-- ===== callouts ===== -->
+  <g class="callout">
+    <g><circle cx="155" cy="200" r="13"/><text x="155" y="205">1</text></g>
+    <g><circle cx="360" cy="255" r="13"/><text x="360" y="260">2</text></g>
+    <g><circle cx="550" cy="165" r="13"/><text x="550" y="170">3</text></g>
+    <g><circle cx="765" cy="255" r="13"/><text x="765" y="260">4</text></g>
+    <g><circle cx="345" cy="378" r="13"/><text x="345" y="383">5</text></g>
+    <g><circle cx="985" cy="200" r="13"/><text x="985" y="205">6</text></g>
+    <g><circle cx="710" cy="690" r="13"/><text x="710" y="695">7</text></g>
+    <!-- note: RESULT RETURNS label sits below at y=716 -->
+    <g><circle cx="660" cy="605" r="13"/><text x="660" y="610">8</text></g>
+    <g><circle cx="600" cy="472" r="13"/><text x="600" y="477">9</text></g>
+  </g>
+</svg>
+
+<!-- legend -->
+<svg viewBox="0 0 1120 170" xmlns="http://www.w3.org/2000/svg" style="margin-top:8px;">
+  <rect class="box-inner" x="190" y="10" width="740" height="150"/>
+  <text class="lbl" x="560" y="34" font-size="14" text-anchor="middle" letter-spacing="2">LEGEND</text>
+  <line class="rule" x1="190" y1="44" x2="930" y2="44" opacity=".3"/>
+  <g class="lbl-sm" font-size="13">
+    <text x="212" y="66">1 · AGENT</text>
+    <text x="212" y="88">2 · REQUEST / CALL (OUTBOUND)</text>
+    <text x="212" y="110">3 · TELEKEY GATE (KEYED CONTROL POINT)</text>
+    <text x="212" y="132">4 · AUTHORIZED — PASSES</text>
+    <text x="212" y="154">5 · UNAUTHORIZED — BLOCKED</text>
+    <text x="560" y="66">6 · MCP SERVER / TOOLS</text>
+    <text x="560" y="88">7 · RESULT RETURNS (BYPASSES TELEKEY)</text>
+    <text x="560" y="110">8 · SUB-AGENT (SCOPED IDENTITY)</text>
+    <text x="560" y="132">9 · SCOPED KEY — NARROWED</text>
+  </g>
+</svg>
+</div>
+</body>
+</html>
