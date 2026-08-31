@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TeleKey — Lineage: Telescript & General Magic</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1117;
+    --panel:#131922;
+    --ink:#e8edf3;          /* primary text */
+    --ink-2:#aab4c0;        /* secondary text */
+    --ink-3:#6b7684;        /* faint */
+    --cyan:#39c5cf;
+    --amber:#fbbf24;
+    --hairline:rgba(201,209,217,.12);
+    --display:"Space Grotesk", system-ui, sans-serif;
+    --body:"Inter", system-ui, sans-serif;
+    --mono:"IBM Plex Mono", ui-monospace, monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;background:var(--bg);color:var(--ink-2);
+    font-family:var(--body);-webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;}
+  a{color:var(--cyan);text-decoration:none;}
+  a:hover{text-decoration:underline;text-underline-offset:3px;}
+
+  /* ---- header ---- */
+  header.nav{
+    position:sticky;top:0;z-index:20;
+    display:flex;align-items:center;gap:18px;
+    padding:16px 28px;background:rgba(13,17,23,.85);
+    backdrop-filter:blur(10px);border-bottom:1px solid var(--hairline);
+  }
+  .brand{font-family:var(--display);color:var(--cyan);font-weight:700;
+    font-size:calc(19px * var(--font-scale));letter-spacing:.3px;}
+  .nav-back{color:var(--ink-3);font-size:calc(14px * var(--font-scale));}
+  .nav-back:hover{color:var(--ink-2);text-decoration:none;}
+  .nav-spacer{flex:1;}
+  .nav-link{color:var(--ink-2);font-size:calc(14px * var(--font-scale));
+    border:1px solid var(--hairline);border-radius:999px;padding:6px 14px;}
+  .nav-link:hover{border-color:var(--cyan);text-decoration:none;}
+
+  main{max-width:720px;margin:0 auto;padding:72px 28px 100px;}
+
+  /* ---- hero: display face carries it ---- */
+  .kicker{font-family:var(--mono);color:var(--cyan);font-size:calc(13px * var(--font-scale));
+    letter-spacing:.5px;margin-bottom:20px;}
+  h1{font-family:var(--display);font-weight:700;
+    font-size:clamp(calc(34px * var(--font-scale)),calc(5.5vw * var(--font-scale)),calc(54px * var(--font-scale)));line-height:1.08;
+    letter-spacing:-.5px;color:var(--ink);margin:0 0 24px;}
+  .lede{font-size:calc(20px * var(--font-scale));line-height:1.55;color:var(--ink-2);
+    max-width:620px;margin:0;}
+
+  section{margin-top:72px;}
+  h2{font-family:var(--display);font-weight:700;font-size:calc(26px * var(--font-scale));
+    letter-spacing:-.2px;color:var(--ink);text-transform:none;
+    margin:0 0 24px;line-height:1.2;}
+  h3{font-family:var(--display);font-weight:600;font-size:calc(20px * var(--font-scale));
+    letter-spacing:-.2px;color:var(--cyan);margin:0 0 14px;line-height:1.25;}
+  p{font-size:calc(17px * var(--font-scale));line-height:1.7;margin:0 0 20px;color:var(--ink-2);}
+  strong{color:var(--ink);font-weight:600;}
+  .mono{font-family:var(--mono);font-size:.92em;
+    background:rgba(57,197,207,.1);color:var(--cyan);
+    padding:1px 6px;border-radius:4px;}
+
+  /* ---- architecture panel ---- */
+  .arch{background:var(--panel);border:1px solid var(--hairline);
+    border-left:3px solid var(--cyan);border-radius:10px;
+    padding:28px 30px;margin:24px 0;}
+  .arch p{margin:0 0 14px;}
+  .arch p:last-child{margin-bottom:0;}
+  .permit-attrs{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0;}
+  .permit-attrs span{font-family:var(--mono);font-size:calc(13px * var(--font-scale));
+    border:1px solid var(--hairline);border-radius:6px;
+    padding:5px 11px;color:var(--ink-2);}
+  .permit-attrs b{color:var(--amber);font-weight:500;}
+  .narrows{color:var(--amber);}
+  .src-line{font-size:calc(14px * var(--font-scale));color:var(--ink-3);margin-top:16px;}
+
+  /* ---- lore ---- */
+  blockquote{font-family:var(--display);font-weight:500;
+    font-size:calc(22px * var(--font-scale));line-height:1.4;color:var(--ink);
+    border-left:3px solid var(--cyan);margin:28px 0;padding:2px 0 2px 22px;}
+
+  .doc-callout{display:flex;align-items:center;gap:18px;
+    background:var(--panel);border:1px solid var(--hairline);
+    border-radius:10px;padding:20px 24px;margin:28px 0 4px;
+    text-decoration:none;transition:border-color .15s ease;}
+  .doc-callout:hover{border-color:var(--cyan);text-decoration:none;}
+  .doc-play{font-size:calc(16px * var(--font-scale));color:var(--cyan);
+    border:1px solid var(--cyan);border-radius:999px;
+    width:38px;height:38px;flex:0 0 38px;display:flex;
+    align-items:center;justify-content:center;padding-left:3px;}
+  .doc-text{display:flex;flex-direction:column;gap:3px;flex:1;}
+  .doc-text b{font-family:var(--display);font-weight:600;
+    font-size:calc(16px * var(--font-scale));color:var(--ink);}
+  .doc-text em{font-style:normal;font-size:calc(14px * var(--font-scale));color:var(--ink-3);}
+  .doc-arrow{color:var(--ink-3);font-size:calc(16px * var(--font-scale));}
+  .doc-callout:hover .doc-arrow{color:var(--cyan);}
+
+  /* ---- team ---- */
+  .team-note{font-size:calc(15px * var(--font-scale));color:var(--ink-3);margin:-8px 0 8px;}
+  .group{font-family:var(--display);font-weight:600;font-size:calc(13px * var(--font-scale));
+    letter-spacing:.5px;text-transform:uppercase;color:var(--cyan);
+    margin:38px 0 4px;}
+  .person{border-top:1px solid var(--hairline);padding:24px 0;}
+  .person:first-of-type{border-top:0;}
+  .person-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+    margin-bottom:4px;}
+  .person-name{font-family:var(--display);font-weight:600;font-size:calc(21px * var(--font-scale));
+    color:var(--ink);letter-spacing:-.2px;}
+  .person-links{font-size:calc(13px * var(--font-scale));display:flex;gap:14px;}
+  .role{font-size:calc(16px * var(--font-scale));color:var(--cyan);margin:2px 0 8px;font-weight:500;}
+  .role .with{color:var(--ink-3);font-weight:400;}
+  .after{font-size:calc(15px * var(--font-scale));line-height:1.6;color:var(--ink-2);margin:0;}
+
+  /* ---- sources ---- */
+  .sources{background:var(--panel);border:1px solid var(--hairline);
+    border-radius:10px;padding:8px 30px;}
+  .sources ul{list-style:none;margin:0;padding:0;}
+  .sources li{padding:14px 0;border-bottom:1px solid var(--hairline);
+    font-size:calc(15px * var(--font-scale));display:flex;gap:14px;align-items:baseline;}
+  .sources li:last-child{border-bottom:0;}
+  .sources .yr{font-family:var(--mono);color:var(--ink-3);
+    font-size:calc(13px * var(--font-scale));min-width:44px;}
+
+  footer.pg{margin-top:72px;padding-top:28px;border-top:1px solid var(--hairline);
+    color:var(--ink-3);font-size:calc(14px * var(--font-scale));display:flex;justify-content:space-between;
+    flex-wrap:wrap;gap:10px;}
+  footer.pg a{color:var(--ink-3);}
+
+  @media (max-width:600px){
+    main{padding:48px 22px 72px;}
+    .lede{font-size:calc(18px * var(--font-scale));}
+    h3{font-size:calc(23px * var(--font-scale));}
+  }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <span class="brand">TeleKey</span>
+  <a class="nav-back" href="/">&larr; back</a>
+  <span class="nav-spacer"></span>
+  <a class="nav-link" href="https://github.com/stefans71/telekey-mcp">GitHub</a>
+  <span class="sizer">
+    <button id="a-minus" type="button" aria-label="Decrease text size">A&minus;</button>
+    <span class="pct" id="scale-val" aria-live="polite">100%</span>
+    <button id="a-plus" type="button" aria-label="Increase text size">A+</button>
+  </span>
+</header>
+
+<main>
+  <div class="kicker">Lineage · 1995 → 2026</div>
+  <h1>The problem was solved once before — in 1995.</h1>
+  <p class="lede">TeleKey revives a single idea from Telescript, General Magic's mobile-agent language, and distills it to one rule. Here's the idea, the paper it came from, and the people who built it three decades before the agent era arrived.</p>
+
+  <!-- ARCHITECTURE -->
+  <section>
+    <h2>The idea we're drawing on</h2>
+    <h3>Telescript's Permit</h3>
+    <p>Telescript agents were programs that <em>travelled</em> — moving from one machine (a "place") to another to do their work. The danger is obvious: code arriving from elsewhere, running on your machine, reaching for your resources. Telescript's answer was the <strong>permit</strong> — a set of attributes, enforced by the runtime engine, that defined exactly what an agent was allowed to do.</p>
+
+    <div class="arch">
+      <p>A permit carried both <strong>capabilities</strong> (what the agent may do) and <strong>allowances</strong> (how much it may consume, measured in "teleclicks"):</p>
+      <div class="permit-attrs">
+        <span><b>canGo</b> — travel</span>
+        <span><b>canCreate</b> — spawn</span>
+        <span><b>canGrant</b> — delegate</span>
+        <span><b>canDeny</b></span>
+        <span><b>charges</b> — budget</span>
+      </div>
+      <p>The part TeleKey builds on: an agent's effective authority was the <strong>intersection</strong> of the permit it carried with the permit of the place it entered. Authority could only ever be <span class="narrows">reduced</span> at each boundary — never increased. Cross a boundary, and your permit narrows. It cannot widen.</p>
+    </div>
+
+    <p>That "only-ever-narrows" property — enforced by a trusted engine sitting between the agent and everything it touches — is the direct ancestor of TeleKey's one rule: a delegated key is valid only if <span class="mono">caps ⊆ parent</span>. We didn't invent the idea. We distilled a 1995 one to a single invariant and put it where MCP agents run today.</p>
+
+    <p class="src-line">Primary sources: <a href="http://www.datarover.com/Telescript/SECURITY.PDF">An Introduction to Safety and Security in Telescript</a> (General Magic) and the <a href="http://bitsavers.informatik.uni-stuttgart.de/pdf/generalMagic/Telescript_Language_Reference_Oct95.pdf">Telescript Language Reference</a> (October 1995).</p>
+  </section>
+
+  <!-- LORE -->
+  <section>
+    <h2>One of the most important dead companies in Silicon Valley</h2>
+    <p>General Magic spun out of Apple in 1990 to build the handheld communicator its founders could already see coming. The roster was staggering: core architects of the original Macintosh, alongside people who would go on to create the iPhone (Tony Fadell) and Android (Andy Rubin). By 1991 they were already building the smartphone, the app store, e-commerce, streaming, and software agents — and had to invent softmodems and touchscreen chips just to demo it.</p>
+    <p>They were roughly fifteen years early. The networks weren't there, the devices weren't there, the market wasn't there. The company folded in 2002. Forbes later called it <em>"the most important dead company in Silicon Valley."</em> The ideas didn't die — they scattered into the products that came to define the era that followed.</p>
+    <blockquote>The agent-authorization problem Jim White wrote about in 1995 — running code safely across trust boundaries you don't control — is the exact problem MCP agents face today. Right idea. Wrong decade. Finally on time.</blockquote>
+
+    <a class="doc-callout" href="https://www.generalmagicthemovie.com/">
+      <span class="doc-play">▶</span>
+      <span class="doc-text">
+        <b>Watch the story</b>
+        <em>General Magic (2018) — the documentary, built from footage shot inside the company in the '90s.</em>
+      </span>
+      <span class="doc-arrow">↗</span>
+    </a>
+  </section>
+
+  <!-- TEAM -->
+  <section>
+    <h2>The people who built it</h2>
+    <p class="team-note">Roles as stated in Jim White's 1995 white paper, <a href="http://www.datarover.com/Telescript/Whitepapers/wp4/whitepaper-4.html">"Mobile Agents."</a> Telescript role first; earlier and later work below.</p>
+
+    <div class="group">Telescript language &amp; server engine — where the permit lived</div>
+
+    <div class="person">
+      <div class="person-head">
+        <span class="person-name">Jim White</span>
+        <span class="person-links"><a href="https://www.linkedin.com/in/alohajimwhite/">LinkedIn</a></span>
+      </div>
+      <div class="role">VP, Agent Division — co-designed Telescript, led the 25-person agent team</div>
+      <p class="after">Invented and commercialized the mobile-agent paradigm; oversaw US Patent 5,603,031 describing mobile agents; authored the four Telescript white papers. A long career in networked-agent and identity systems followed.</p>
+    </div>
+
+    <div class="person">
+      <div class="person-head">
+        <span class="person-name">Tom Miltonberger</span>
+        <span class="person-links"><a href="https://www.linkedin.com/in/tommiltonberger/">LinkedIn</a></span>
+      </div>
+      <div class="role">Co-led the Telescript server team <span class="with">(with White &amp; Schramm)</span></div>
+      <p class="after">University of Illinois EE. Later founded <strong>Guardian Analytics</strong>, an online-fraud-prevention company — a security career that rhymes with the permit work. Now in engineering leadership in the Bay Area.</p>
+    </div>
+
+    <div class="person">
+      <div class="person-head">
+        <span class="person-name">Steve Schramm</span>
+        <span class="person-links"><a href="https://www.linkedin.com/in/steveschramm">LinkedIn</a></span>
+      </div>
+      <div class="role">Co-led the Telescript server team <span class="with">(with White &amp; Miltonberger)</span></div>
+      <p class="after">One of the leads who conceived Telescript and implemented it for servers, per White's paper.</p>
+    </div>
+
+    <div class="group">Magic Cap client — carried Telescript onto the devices</div>
+
+    <div class="person">
+      <div class="person-head">
+        <span class="person-name">Andy Hertzfeld</span>
+        <span class="person-links"><a href="https://en.wikipedia.org/wiki/Andy_Hertzfeld">Wikipedia</a></span>
+      </div>
+      <div class="role">Co-founder; led client implementation of the technology</div>
+      <p class="after">A core architect of the original Macintosh. Later at Google, where he worked on the design of Google+ and Circles.</p>
+    </div>
+
+    <div class="person">
+      <div class="person-head">
+        <span class="person-name">Darin Adler</span>
+        <span class="person-links"><a href="https://en.wikipedia.org/wiki/Darin_Adler">Wikipedia</a></span>
+      </div>
+      <div class="role">Architect of the Magic Cap OS (client implementation)</div>
+      <p class="after">Technical lead for Apple's System 7. Later a long tenure at Apple as an engineering manager on <strong>Safari and WebKit</strong>.</p>
+    </div>
+
+    <div class="person">
+      <div class="person-head">
+        <span class="person-name">Kevin Lynch</span>
+        <span class="person-links"><a href="https://en.wikipedia.org/wiki/Kevin_Lynch_(computing)">Wikipedia</a> <a href="https://www.klynch.com/">Site</a></span>
+      </div>
+      <div class="role">Director of the Magic Cap team (client implementation)</div>
+      <p class="after">Later CTO of Adobe, then VP of Technology at Apple, where he led software for the <strong>Apple Watch</strong>.</p>
+    </div>
+  </section>
+
+  <!-- SOURCES -->
+  <section>
+    <h2>Read further</h2>
+    <div class="sources">
+      <ul>
+        <li><span class="yr">1995</span><a href="http://www.datarover.com/Telescript/Whitepapers/wp4/whitepaper-4.html">White, J.E. — "Telescript Technology: Mobile Agents"</a> (white paper #4)</li>
+        <li><span class="yr">1995</span><a href="http://www.datarover.com/Telescript/SECURITY.PDF">"An Introduction to Safety and Security in Telescript"</a> — the permit model</li>
+        <li><span class="yr">1995</span><a href="http://bitsavers.informatik.uni-stuttgart.de/pdf/generalMagic/Telescript_Language_Reference_Oct95.pdf">Telescript Language Reference</a> (bitsavers)</li>
+        <li><span class="yr">wiki</span><a href="https://en.wikipedia.org/wiki/General_Magic">General Magic</a> &nbsp;·&nbsp; <a href="https://en.wikipedia.org/wiki/Telescript_(programming_language)">Telescript (programming language)</a></li>
+        <li><span class="yr">2011</span><a href="https://www.forbes.com/sites/michaelkanellos/2011/09/18/general-magic-the-most-important-dead-company-in-silicon-valley/">"The Most Important Dead Company in Silicon Valley?"</a> — Forbes</li>
+        <li><span class="yr">2018</span><a href="https://www.generalmagicthemovie.com/">General Magic</a> — the documentary</li>
+      </ul>
+    </div>
+    <p class="team-note" style="margin-top:16px;">Some 1990s links are served from community archives and may occasionally be down; the Wayback Machine holds copies of each.</p>
+  </section>
+
+  <footer class="pg">
+    <span>TeleKey — a capability key for MCP agents.</span>
+    <a href="/">telekey.data-analytics.space</a>
+  </footer>
+</main>
+<script>
+// Session-only, deliberately not localStorage — same behaviour as the main page.
+(function(){
+  var scale = 1;
+  var $ = function(id){ return document.getElementById(id); };
+  function apply(delta){
+    scale = Math.min(1.6, Math.max(0.85, +(scale + delta).toFixed(2)));
+    document.documentElement.style.setProperty("--font-scale", scale);
+    $("scale-val").textContent = Math.round(scale * 100) + "%";
+    $("a-minus").disabled = scale <= 0.85;
+    $("a-plus").disabled  = scale >= 1.6;
+  }
+  $("a-minus").addEventListener("click", function(){ apply(-0.1); });
+  $("a-plus").addEventListener("click",  function(){ apply(0.1); });
+  apply(0);
+})();
+</script>
+</body>
+</html>
