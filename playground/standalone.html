@@ -82,9 +82,13 @@
   .sizer .pct{font-size:var(--fs-eyebrow);color:var(--dim);min-width:2.6rem;text-align:center}
 
   /* ---------- hero ---------- */
-  header.hero{padding:2rem 0 1.5rem;border-bottom:1px solid var(--hair);margin-bottom:1.75rem}
+  header.hero{padding:2rem 0 .5rem}
   .eyebrow{font-size:var(--fs-eyebrow);letter-spacing:.2em;text-transform:uppercase;
            color:var(--dim);font-weight:700;margin:0 0 .6rem}
+  /* Section divider between the hero and the demo. Same eyebrow treatment as
+     every other label on the page, just given rules and room of its own. */
+  .section-eyebrow{margin:1.75rem 0 1.75rem;padding:1.1rem 0;
+                   border-top:1px solid var(--hair);border-bottom:1px solid var(--hair)}
   h1{font-size:var(--fs-h1);font-weight:700;margin:0 0 .75rem;letter-spacing:-.015em;
      line-height:1.25;max-width:46ch}
   h1 .k{color:var(--brand)}
@@ -279,7 +283,6 @@
 <div class="wrap">
 
 <header class="hero">
-  <p class="eyebrow">Watch a prompt injection hit a wall</p>
   <h1>A capability key for MCP agents — scoped access that can only ever <span class="k">narrow</span>, never widen.</h1>
   <p class="lede">Your agent connects to MCP servers. Every action it takes is scoped to the permissions you granted — <b>nothing more.</b> So when something goes wrong — a bad instruction, a compromised tool, a hijacked sub-agent — the damage is bounded to what you already allowed.</p>
   <p class="lede where">Works with Claude Code, Codex, and any MCP agent, via a <code>PreToolUse</code> hook.</p>
@@ -293,6 +296,8 @@
 </div>
 
 <div id="app">
+
+  <p class="eyebrow section-eyebrow">Watch an unauthorized tool call get stopped</p>
 
   <!-- ============ BLOCK 1 — without TeleKey ============ -->
   <section class="block off" id="block-off">
