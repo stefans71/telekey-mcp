@@ -7,29 +7,39 @@
 <meta name="description" content="A capability key for MCP agents: scoped access that can only ever narrow, never widen. Interactive demo running the real engine in your browser.">
 <style>
   /* ------------------------------------------------------------------
-     TYPE SCALE vs LAYOUT — deliberately decoupled.
-     html font-size is FIXED, so every rem used for padding/margin/gap is
-     stable. --font-scale is multiplied into font-size declarations ONLY,
-     via the --fs-* tokens below. Growing the text must never move the
-     layout.
+     TYPE SCALE vs LAYOUT — decoupled on purpose. html font-size is FIXED,
+     so every rem used for spacing is stable. --font-scale feeds the --fs-*
+     tokens, which appear ONLY in font-size declarations. Text grows; the
+     layout does not move.
+
+     COLOUR CONTRACT — brand vs verdict, deliberately disjoint:
+       --brand (#39c5cf, the wordmark cyan) = identity and chrome only:
+         headers, PLAY, links, CTA, focus, hover, engine activity.
+       --green / --red = verdicts ONLY. Allowed / denied. Never decorative,
+         and --brand never appears on an allow/deny signal.
      ------------------------------------------------------------------ */
   html{font-size:16px}
   :root{
     --font-scale:1;
-    --fs-eyebrow: calc(.72rem  * var(--font-scale));
+    --fs-eyebrow: calc(.74rem  * var(--font-scale));
     --fs-badge:   calc(.82rem  * var(--font-scale));
-    --fs-small:   calc(.9rem   * var(--font-scale));
+    --fs-small:   calc(.92rem  * var(--font-scale));
     --fs-body:    calc(1rem    * var(--font-scale));
     --fs-lede:    calc(1.06rem * var(--font-scale));
+    --fs-zone:    calc(1rem    * var(--font-scale));
+    --fs-block:   calc(1.12rem * var(--font-scale));
     --fs-h1:      calc(1.5rem  * var(--font-scale));
     --fs-verdict: calc(1.4rem  * var(--font-scale));
 
     --bg:#0d1117; --panel:#161b22; --panel2:#1b222c; --sunk:#010409;
     --hair:rgba(240,246,252,.10); --hair-str:rgba(240,246,252,.20);
-    --ink:#e6edf3; --mute:#9ba5b4; --dim:#868f9b;      /* both >= 4.5:1 on --bg */
+    --ink:#e6edf3; --mute:#9ba5b4; --dim:#868f9b;
+
+    --brand:#39c5cf; --brand-hi:#7fe3ea; --brand-dim:rgba(57,197,207,.14);
     --green:#3fb950; --green-hi:#56d364;
     --red:#f85149;   --red-hi:#ff6b63;
-    --amber:#d29922; --cyan:#39c5cf;
+    --amber:#d29922;
+
     --shadow:0 1px 2px rgba(1,4,9,.55), 0 6px 20px rgba(1,4,9,.45);
     --shadow-hi:0 2px 4px rgba(1,4,9,.6), 0 12px 32px rgba(1,4,9,.55);
     --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
@@ -38,9 +48,9 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--mono);
        font-size:var(--fs-body);line-height:1.55;-webkit-font-smoothing:antialiased}
-  a{color:var(--cyan);text-underline-offset:3px;transition:color var(--ease)}
-  a:hover{color:#7fe3ea;text-decoration:underline}
-  :focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
+  a{color:var(--brand);text-underline-offset:3px;transition:color var(--ease)}
+  a:hover{color:var(--brand-hi);text-decoration:underline}
+  :focus-visible{outline:2px solid var(--brand);outline-offset:3px;border-radius:4px}
   .wrap{max-width:1180px;margin:0 auto;padding:0 1.25rem 4rem}
 
   /* ---------- sticky bar ---------- */
@@ -49,8 +59,8 @@
        border-bottom:1px solid var(--hair)}
   .bar-in{max-width:1180px;margin:0 auto;padding:.6rem 1.25rem;
           display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
-  .mark{font-size:var(--fs-body);font-weight:700;color:var(--cyan);letter-spacing:-.01em;
-        white-space:nowrap;margin-right:.15rem}
+  .mark{font-size:var(--fs-body);font-weight:700;color:var(--brand);letter-spacing:-.01em;
+        white-space:nowrap}
   .badges{display:flex;flex-wrap:wrap;gap:.4rem;align-items:center;min-width:0}
   .badge{font-size:var(--fs-badge);padding:.25rem .6rem;border-radius:999px;
          border:1px solid var(--hair);background:var(--panel);color:var(--mute);
@@ -60,64 +70,57 @@
   .badge.ok{color:var(--green-hi);border-color:rgba(63,185,80,.4)}
   .badge.bad{color:var(--red-hi);border-color:rgba(248,81,73,.45)}
   .badge.wait{color:var(--amber);border-color:rgba(210,153,34,.4)}
-
-  /* quiet, secondary */
   .sizer{display:inline-flex;align-items:center;gap:.25rem;margin-left:auto}
   .sizer button{font-family:var(--mono);font-size:var(--fs-badge);font-weight:700;color:var(--dim);
       background:transparent;border:1px solid var(--hair);border-radius:6px;
       width:1.75rem;height:1.6rem;cursor:pointer;line-height:1;padding:0;
       transition:color var(--ease),border-color var(--ease)}
-  .sizer button:hover:not(:disabled){color:var(--ink);border-color:var(--hair-str)}
+  .sizer button:hover:not(:disabled){color:var(--brand);border-color:var(--brand)}
   .sizer button:disabled{opacity:.35;cursor:not-allowed}
   .sizer .pct{font-size:var(--fs-eyebrow);color:var(--dim);min-width:2.6rem;text-align:center}
 
-  /* ---------- hero: what it is -> what it stops -> where ---------- */
-  header.hero{padding:2rem 0 1.5rem;border-bottom:1px solid var(--hair);margin-bottom:1.5rem}
+  /* ---------- hero ---------- */
+  header.hero{padding:2rem 0 1.5rem;border-bottom:1px solid var(--hair);margin-bottom:1.75rem}
   .eyebrow{font-size:var(--fs-eyebrow);letter-spacing:.2em;text-transform:uppercase;
            color:var(--dim);font-weight:700;margin:0 0 .6rem}
   h1{font-size:var(--fs-h1);font-weight:700;margin:0 0 .75rem;letter-spacing:-.015em;
      line-height:1.25;max-width:46ch}
-  h1 .k{color:var(--cyan)}
+  h1 .k{color:var(--brand)}
   .lede{margin:0 0 .35rem;font-size:var(--fs-lede);color:var(--mute);max-width:70ch;line-height:1.5}
   .lede.where{color:var(--dim);font-size:var(--fs-small)}
   .lede b{color:var(--ink);font-weight:600}
 
-  /* ---------- parity failure ---------- */
   #fatal{display:none;border:1px solid var(--red);background:#2a1315;border-radius:10px;
          padding:1.25rem;margin-bottom:1.5rem}
   #fatal h2{color:var(--red-hi);margin:0 0 .5rem;font-size:var(--fs-lede)}
   #fatal pre{white-space:pre-wrap;color:#ffb4ae;margin:.5rem 0 0;font-size:var(--fs-small)}
 
-  /* ---------- toggle ---------- */
-  .toggle{display:flex;align-items:center;gap:1rem;background:var(--panel);
-          border:1px solid var(--hair);border-radius:10px;padding:.9rem 1.1rem;
-          margin-bottom:1.5rem;box-shadow:var(--shadow)}
-  .switch{position:relative;width:3.2rem;height:1.75rem;flex:0 0 auto}
-  .switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer}
-  .slider{position:absolute;inset:0;background:#30363d;border-radius:999px;pointer-events:none;
-          transition:background var(--ease)}
-  .slider:before{content:"";position:absolute;width:1.3rem;height:1.3rem;left:.22rem;top:.22rem;
-          background:#8b949e;border-radius:50%;transition:transform var(--ease),background var(--ease)}
-  input:checked + .slider{background:#1f6f34}
-  input:checked + .slider:before{transform:translateX(1.45rem);background:var(--green-hi)}
-  .switch input:focus-visible + .slider{outline:2px solid var(--cyan);outline-offset:3px}
-  .tlabel b{font-size:var(--fs-body)}
-  .tstate{font-weight:700;font-size:var(--fs-body);color:var(--red-hi)}
-  .tstate.on{color:var(--green-hi)}
-  .thint{color:var(--mute);font-size:var(--fs-small);margin-top:.1rem}
+  /* ---------- scenario blocks ---------- */
+  .block{margin-bottom:2rem}
+  .block-head{display:flex;align-items:baseline;gap:.75rem;flex-wrap:wrap;margin-bottom:.85rem}
+  .block-title{font-size:var(--fs-block);font-weight:700;margin:0;letter-spacing:-.01em}
+  .block.off .block-title{color:var(--mute)}
+  .block.on  .block-title{color:var(--ink)}
+  .block-sub{font-size:var(--fs-small);color:var(--dim);margin:0}
+  .play{font-family:var(--mono);font-size:var(--fs-small);font-weight:700;
+        color:var(--brand);background:transparent;border:1px solid var(--brand);
+        border-radius:7px;padding:.32rem .8rem;cursor:pointer;margin-left:auto;
+        white-space:nowrap;transition:background var(--ease),color var(--ease)}
+  .play:hover:not(:disabled){background:var(--brand-dim)}
+  .play:disabled{opacity:.45;cursor:progress}
 
-  /* ---------- zones ---------- */
   .zones{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr) auto minmax(0,1fr);
-         gap:.85rem;align-items:stretch;margin-bottom:1.5rem}
+         gap:.85rem;align-items:stretch}
   .arrow{display:flex;align-items:center;justify-content:center;color:var(--dim);
          font-size:var(--fs-lede);user-select:none}
   .zone{min-width:0;background:var(--panel);border:1px solid var(--hair);border-radius:10px;
         padding:1rem 1.05rem;box-shadow:var(--shadow);
         transition:transform var(--ease),box-shadow var(--ease),border-color var(--ease)}
   .zone:hover{transform:translateY(-2px);box-shadow:var(--shadow-hi);border-color:var(--hair-str)}
-  .zone h3{margin:0 0 .15rem;font-size:var(--fs-eyebrow);letter-spacing:.2em;text-transform:uppercase;
-           color:var(--dim);font-weight:700}
-  .zone .note{font-size:var(--fs-small);color:var(--dim);margin:0 0 .8rem}
+  .zone h3{margin:0 0 .1rem;font-size:var(--fs-zone);font-weight:700;color:var(--ink);
+           letter-spacing:.01em;border-left:3px solid var(--brand);padding-left:.55rem}
+  .block.off .zone h3{border-left-color:var(--dim);color:var(--mute)}
+  .zone .note{font-size:var(--fs-small);color:var(--dim);margin:.3rem 0 .85rem;padding-left:.55rem}
 
   .cap{display:block;padding:.16rem 0;font-size:var(--fs-body);overflow-wrap:anywhere}
   .cap.kept{color:var(--green-hi)}
@@ -128,24 +131,21 @@
   .row .val{color:var(--ink);font-weight:600;overflow-wrap:anywhere;min-width:0}
   .none{color:var(--mute);font-style:italic;font-size:var(--fs-small)}
 
-  /* engine steps — state comes from the real call */
   .step{display:flex;align-items:flex-start;gap:.55rem;padding:.28rem 0;color:var(--dim);
         font-size:var(--fs-small);overflow-wrap:anywhere}
   .step .dot{width:.55rem;height:.55rem;border-radius:50%;background:#30363d;flex:0 0 auto;
              margin-top:.4rem;transition:background var(--ease)}
-  .step.fired{color:var(--ink)}
-  .step.fired .dot{background:var(--cyan)}
-  .step.threw{color:var(--red-hi);font-weight:600}
-  .step.threw .dot{background:var(--red-hi)}
+  .step.fired{color:var(--ink)} .step.fired .dot{background:var(--brand)}
+  .step.threw{color:var(--red-hi);font-weight:600} .step.threw .dot{background:var(--red-hi)}
   .step.off{opacity:.4}
 
-  /* outbound cards — the coloured edge is the clearest allow/deny signal */
   .out{border-radius:8px;padding:.75rem .9rem;margin-bottom:.65rem;background:var(--panel2);
        border:1px solid var(--hair);border-left:5px solid var(--dim);
-       transition:border-color var(--ease),box-shadow var(--ease)}
+       transition:border-color var(--ease),box-shadow var(--ease),opacity var(--ease);}
   .out:hover{box-shadow:var(--shadow)}
   .out.pass{border-left-color:var(--green)}
   .out.block{border-left-color:var(--red)}
+  .out.pending{opacity:.18}
   .out-head{font-size:var(--fs-small);color:var(--mute);margin-bottom:.25rem;overflow-wrap:anywhere}
   .verdict{font-size:var(--fs-verdict);font-weight:700;letter-spacing:.03em;line-height:1.15}
   .out.pass .verdict{color:var(--green-hi)}
@@ -157,16 +157,44 @@
   .reason{font-size:var(--fs-small);color:var(--mute);margin-top:.35rem;line-height:1.5;
           overflow-wrap:anywhere}
 
-  /* ---------- trace ---------- */
-  .term{min-width:0;background:var(--sunk);border:1px solid var(--hair);border-radius:10px;
-        padding:1rem 1.15rem;box-shadow:var(--shadow)}
-  .term h3{margin:0 0 .7rem;font-size:var(--fs-eyebrow);letter-spacing:.2em;text-transform:uppercase;
-           color:var(--dim);font-weight:700}
-  .term pre{margin:0;white-space:pre-wrap;word-break:break-word;font-size:var(--fs-small);
-            line-height:1.75;overflow-x:auto}
-  .c-g{color:var(--green-hi);font-weight:600} .c-r{color:var(--red-hi);font-weight:600}
-  .c-a{color:var(--amber)} .c-c{color:var(--cyan)} .c-m{color:var(--dim)}
-  footer{margin-top:1.75rem;color:var(--mute);font-size:var(--fs-small);
+  /* ---------- results table ---------- */
+  .trace{margin-top:1rem;background:var(--sunk);border:1px solid var(--hair);border-radius:10px;
+         padding:1rem 1.15rem;box-shadow:var(--shadow);overflow-x:auto}
+  .trace .eyebrow{margin-bottom:.7rem}
+  table{border-collapse:collapse;width:100%;font-size:var(--fs-small);min-width:34rem}
+  th{text-align:left;font-weight:700;color:var(--brand);border-bottom:1px solid var(--hair-str);
+     padding:.45rem .7rem .45rem 0;white-space:nowrap;letter-spacing:.02em}
+  td{padding:.5rem .7rem .5rem 0;border-bottom:1px solid var(--hair);vertical-align:top;
+     color:var(--mute)}
+  tr:last-child td{border-bottom:none}
+  td.cap-col{color:var(--ink);white-space:nowrap}
+  td.verdict-col{white-space:nowrap;font-weight:700}
+  td.verdict-col.allow{color:var(--green-hi)}
+  td.verdict-col.deny{color:var(--red-hi)}
+
+  /* ---------- CTA ---------- */
+  .cta{border:1px solid var(--brand);border-radius:10px;padding:1.15rem 1.25rem;
+       background:var(--brand-dim);margin:2rem 0 1.5rem}
+  .cta h3{margin:0 0 .25rem;font-size:var(--fs-block);color:var(--ink);font-weight:700}
+  .cta p{margin:0 0 .85rem;font-size:var(--fs-small);color:var(--mute)}
+  .cmd{display:flex;align-items:center;gap:.6rem;flex-wrap:wrap}
+  .cmd code{flex:1 1 20rem;min-width:0;background:var(--sunk);border:1px solid var(--hair);
+            border-radius:7px;padding:.6rem .8rem;font-size:var(--fs-body);color:var(--brand-hi);
+            overflow-x:auto;white-space:nowrap}
+  .copy{font-family:var(--mono);font-size:var(--fs-small);font-weight:700;color:var(--bg);
+        background:var(--brand);border:1px solid var(--brand);border-radius:7px;
+        padding:.55rem .9rem;cursor:pointer;white-space:nowrap;transition:background var(--ease)}
+  .copy:hover{background:var(--brand-hi)}
+  .cta .secondary{display:inline-block;margin-top:.8rem;font-size:var(--fs-small)}
+
+  /* ---------- caveat ---------- */
+  .caveat{border:1px solid var(--hair);border-radius:10px;padding:1rem 1.15rem;
+          background:var(--panel);box-shadow:var(--shadow);font-size:var(--fs-body);
+          color:var(--mute);line-height:1.6;
+          transition:transform var(--ease),box-shadow var(--ease),border-color var(--ease)}
+  .caveat:hover{transform:translateY(-2px);box-shadow:var(--shadow-hi);border-color:var(--hair-str)}
+  .caveat .eyebrow{margin-bottom:.5rem}
+  footer{margin-top:1.5rem;color:var(--dim);font-size:var(--fs-small);
          border-top:1px solid var(--hair);padding-top:1rem}
 
   /* ---------- responsive ---------- */
@@ -174,16 +202,29 @@
     .wrap{padding:0 1rem 3rem}
     .bar-in{padding:.5rem 1rem;gap:.4rem}
     .mark{width:100%;margin:0 0 .1rem}
-    .sizer{margin-left:auto}
-    header.hero{padding:1.35rem 0 1.15rem}
+    header.hero{padding:1.35rem 0 1.15rem;margin-bottom:1.25rem}
     h1{max-width:none}
     .zones{grid-template-columns:minmax(0,1fr);gap:.5rem}
     .arrow{transform:rotate(90deg);padding:.1rem 0}
-    .toggle{flex-wrap:wrap;gap:.7rem}
+    .play{margin-left:0}
+    .block-head{gap:.5rem}
+    /* the OFF block's job is contrast, not detail — tighten it */
+    .block.off .zone{padding:.8rem .9rem}
+    .block.off .zone .note{display:none}
+    .block.off .out{padding:.6rem .75rem}
+    /* stack the results table so the Why column is readable without scrolling */
+    .trace{overflow-x:visible}
+    table{min-width:0}
+    thead{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+    tbody tr{display:block;padding:.6rem 0;border-bottom:1px solid var(--hair)}
+    tbody tr:last-child{border-bottom:none}
+    td{display:block;border:none;padding:.12rem 0;white-space:normal}
+    td::before{content:attr(data-label) ": ";color:var(--brand);font-weight:700}
+    td.cap-col,td.verdict-col{white-space:normal}
   }
   @media (prefers-reduced-motion: reduce){
     *,*::before,*::after{transition:none!important;animation:none!important}
-    .zone:hover{transform:none}
+    .zone:hover,.caveat:hover{transform:none}
     .bar{backdrop-filter:none;-webkit-backdrop-filter:none;background:var(--bg)}
   }
 </style>
@@ -224,48 +265,71 @@
 </div>
 
 <div id="app">
-  <div class="toggle">
-    <label class="switch">
-      <input type="checkbox" id="enforce" checked aria-label="TeleKey enforcement">
-      <span class="slider"></span>
-    </label>
-    <div class="tlabel">
-      <b>TeleKey enforcement:</b>
-      <span class="tstate on" id="tstate">ON</span>
-      <div class="thint" id="thint">The helper holds a narrowed key. Flip it off to remove the key entirely.</div>
+
+  <!-- ============ BLOCK 1 — without TeleKey ============ -->
+  <section class="block off" id="block-off">
+    <div class="block-head">
+      <div>
+        <h2 class="block-title">Without TeleKey — the usual setup today</h2>
+        <p class="block-sub">The agent holds your credentials directly. Nothing evaluates what it asks for.</p>
+      </div>
+      <button class="play" type="button" data-play="off">▶ Play</button>
     </div>
+    <div class="zones">
+      <div class="zone"><h3>The scoped key</h3><p class="note">what TeleKey handed the sub-agent</p><div id="off-key"></div></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="zone"><h3>The TeleKey engine</h3><p class="note">checks every call before it runs</p><div id="off-engine"></div></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="zone"><h3>Outbound calls</h3><p class="note">what the agent actually got to do</p><div id="off-out"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ BLOCK 2 — with TeleKey ============ -->
+  <section class="block on" id="block-on">
+    <div class="block-head">
+      <div>
+        <h2 class="block-title">With TeleKey — the same attack, scoped</h2>
+        <p class="block-sub">Same request, same injection. Every call now goes through the engine first.</p>
+      </div>
+      <button class="play" type="button" data-play="on">▶ Play</button>
+    </div>
+    <div class="zones">
+      <div class="zone"><h3>The scoped key</h3><p class="note">what TeleKey handed the sub-agent</p><div id="on-key"></div></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="zone"><h3>The TeleKey engine</h3><p class="note">checks every call before it runs</p><div id="on-engine"></div></div>
+      <div class="arrow" aria-hidden="true">→</div>
+      <div class="zone"><h3>Outbound calls</h3><p class="note">what the agent actually got to do</p><div id="on-out"></div></div>
+    </div>
+
+    <div class="trace">
+      <p class="eyebrow">Every line below came from a real call</p>
+      <table>
+        <thead><tr><th>Requested capability</th><th>Verdict</th><th>Why</th></tr></thead>
+        <tbody id="trace-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="cta">
+    <h3>Put it in front of your own agent</h3>
+    <p>This repo is a plugin marketplace. Point Claude Code at it — no clone, no build.</p>
+    <div class="cmd">
+      <code id="install-cmd">/plugin marketplace add stefans71/telekey-mcp</code>
+      <button class="copy" type="button" id="copy-btn">Copy</button>
+    </div>
+    <a class="secondary" href="https://github.com/stefans71/telekey-mcp">View source on GitHub →</a>
   </div>
 
-  <div class="zones">
-    <div class="zone">
-      <h3>1 · The key</h3>
-      <p class="note">what the helper was handed</p>
-      <div id="z-key"></div>
-    </div>
-    <div class="arrow" aria-hidden="true">→</div>
-    <div class="zone">
-      <h3>2 · The engine</h3>
-      <p class="note" id="engine-note">which step decided</p>
-      <div id="z-engine"></div>
-    </div>
-    <div class="arrow" aria-hidden="true">→</div>
-    <div class="zone">
-      <h3>3 · Outbound calls</h3>
-      <p class="note">what actually left</p>
-      <div id="z-out"></div>
-    </div>
-  </div>
-
-  <div class="term">
-    <h3>Trace — every line below came from a real call</h3>
-    <pre id="log"></pre>
+  <div class="caveat">
+    <p class="eyebrow">Scope &amp; honesty</p>
+    Enforcement bounds what a hijacked agent <em>can</em> do; it does not stop the hijack.
+    Signing here is HMAC-SHA256 via Web Crypto — a stand-in for RFC 9068 JWTs, exactly as in the Node reference.
   </div>
 </div>
 
 <footer>
-  Enforcement bounds what a hijacked agent <em>can</em> do; it does not stop the hijack.
-  Signing here is HMAC-SHA256 via Web Crypto — a stand-in for RFC 9068 JWTs, exactly as in the Node reference.
-  &nbsp;·&nbsp; <a href="https://github.com/stefans71/telekey-mcp">stefans71/telekey-mcp</a>
+  <a href="https://github.com/stefans71/telekey-mcp">stefans71/telekey-mcp</a>
+  &nbsp;·&nbsp; the engine on this page is the engine in the repo, checked on load.
 </footer>
 
 </div>
@@ -278,10 +342,15 @@ import { PARITY } from "./parity.js";
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;" }[c]));
 
+// Display formatting only — never mutates the underlying number.
+const money = (n) => "$" + Number(n).toFixed(2);
+const fmtBudgetVal = (k, v) => (k === "max_spend" ? money(v) : String(v));
+const fmtBudget = (b) => Object.entries(b).map(([k, v]) => `${k} ${fmtBudgetVal(k, v)}`).join(", ");
+
+const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+const pause = (ms) => (REDUCED ? Promise.resolve() : new Promise(r => setTimeout(r, ms)));
+
 // ---------------------------------------------------------------- text size
-// Scales --font-scale only, which is multiplied into the --fs-* tokens. Layout
-// rem values are anchored to a fixed html font-size, so text grows without the
-// page moving. Session-only, deliberately not localStorage.
 let fontScale = 1;
 function applyScale(delta) {
   fontScale = Math.min(1.6, Math.max(0.85, +(fontScale + delta).toFixed(2)));
@@ -296,7 +365,7 @@ $("a-plus").addEventListener("click", () => applyScale(0.1));
 // ---------------------------------------------------------------- parity
 async function outcome(fn) {
   try { return { ok: true, value: await fn() }; }
-  catch (e) { return { ok: false, code: e.code, name: e.constructor.name }; }
+  catch (e) { return { ok: false, code: e.code, name: e.constructor.name, message: e.message }; }
 }
 const cmp = (v) => JSON.stringify({ ok: v.ok, value: v.value, code: v.code, name: v.name });
 
@@ -305,7 +374,6 @@ async function runParity() {
   const p0 = await mintRoot(PARITY.root);
   const p1 = await engine.delegate(p0, PARITY.child);
   const got = {};
-
   got["sig.root"]  = { ok: true, value: p0.sig };
   got["sig.child"] = { ok: true, value: p1.sig };
   got["hash.root"] = { ok: true, value: await hashOf(p0) };
@@ -315,7 +383,6 @@ async function runParity() {
     value: await verifySignature({ ...p0, caps: [...p0.caps, "deleteFile:repoZ"] }) };
   got["verify.budgetTampered"] = { ok: true,
     value: await verifySignature({ ...p0, budget: { ...p0.budget, max_tool_calls: 999999 } }) };
-
   got["call.delete"] = await outcome(async () =>
     (await engine.authorizeCall(p1, "deleteFile:repoX", { spend: 0.02 })).remaining);
   got["call.injectedEmail"] = await outcome(() =>
@@ -339,60 +406,38 @@ async function runParity() {
 }
 
 // ================================================================== SCENARIOS
-// The page renders from this array — nothing below hardcodes the
-// confused-deputy story. To add a scenario later (budget exhaustion,
-// multi-hop delegation, publisher status), append an entry here; the
-// runner and the three zones need no changes.
-//
-// Shape:
-//   id, label, prompt   — identity + the user request being modelled
-//   root, child         — mintRoot() args, and the delegate() narrowing
-//   actions[]           — real engine calls, in order:
-//       { kind:"call", cap, cost, label }   -> engine.authorizeCall(...)
-//       { kind:"mint", actor, caps, budget, label } -> attenuate(...)
-//     `intent:"injected"` marks an action as the attack, for the trace only;
-//     it never changes what the engine is asked to do.
-//   unenforced          — what happens with no key at all (no engine involved)
+// The page renders from this array — nothing below hardcodes the story.
+// To add a scenario later (budget exhaustion, multi-hop delegation, publisher
+// status), append an entry; the runner and both blocks need no changes.
 //
 // scenarios: [...]  <-- new scenarios plug in here
 const SCENARIOS = [
   {
     id: "confused-deputy",
     label: "Confused deputy",
-    prompt: '"clean up my old files, then email me a summary."',
     root: PARITY.root,
     child: PARITY.child,
     actions: [
       { kind:"call", cap:"deleteFile:repoX",   cost:{ spend:0.02 },
-        label:"delete_file → repoX",  trace:"deleteFile:repoX",   allowNote:"inside the key" },
-      { kind:"call", cap:"sendEmail:attacker", cost:{ spend:0.05 }, intent:"injected",
-        label:"send_email → attacker", trace:"sendEmail:attacker",
-        denyNote:"the injection had nowhere to go" },
+        label:"delete_file → repoX",   allowNote:"in the key" },
+      { kind:"call", cap:"sendEmail:attacker", cost:{ spend:0.05 }, injected:true,
+        label:"send_email → attacker", denyNote:"not in the key, injection had nowhere to go" },
       { kind:"mint", actor:"agent:evil", caps:["sendEmail:attacker"], budget:{ max_tool_calls:1 },
-        intent:"injected", label:"mint a wider key", trace:"mint wider key",
-        denyNote:"a wider key is unrepresentable, not refused" },
+        injected:true, label:"mint a wider key",
+        denyNote:"a wider key can't be represented, only refused" },
     ],
-    unenforced: {
-      intro: [
-        "The agent is asked: " + '"clean up my old files, then email me a summary."',
-        "It holds your credentials directly. No narrowing happens.",
-      ],
-      outcomes: [
-        { label:"delete_file → repoX",   verdict:"EXECUTED",  tone:"pass",
-          note:"intended work", trace:"deleteFile:repoX" },
-        { label:"send_email → attacker", verdict:"DELIVERED", tone:"block",
-          note:"the injected call was never checked — nothing stood between the agent and the outbound side",
-          trace:"sendEmail:attacker", flag:"← the injection landed" },
-      ],
-      closing: "Data left the building. Nothing checked whether it should.",
-      key: [["authority","full / ambient"],["budget","unbounded"]],
-    },
+    // With no key there is no engine to call — that absence IS the point. These
+    // are labelled as unchecked, never dressed up as engine results.
+    unchecked: [
+      { label:"delete_file → repoX",   verdict:"EXECUTED",  tone:"pass",
+        note:"intended work — but nothing verified that" },
+      { label:"send_email → attacker", verdict:"DELIVERED", tone:"block",
+        note:"the injected call was never checked; nothing stood between the agent and the outbound side" },
+    ],
   },
 ];
 const ACTIVE = SCENARIOS[0];
 
-// Which engine step a thrown code actually originates in. Derived from where
-// the throw lives in engine.js / passport.js — not a per-scenario hardcode.
 const STEP_FOR_CODE = {
   SIG_INVALID:"verify", CAP_NOT_GRANTED:"verify",
   BUDGET_CALLS:"meter", BUDGET_SPEND:"meter", BUDGET_TTL:"meter", BUDGET_SPAWNS:"meter",
@@ -405,123 +450,149 @@ const STEP_LABELS = [
   ["log",       "4 · log — provenance"],
 ];
 
-function engineZone(fired, threwAt, enforcing) {
-  // threwAt is a Set: a scenario can produce denials at more than one step
-  // (caps at verify, widening at attenuate). Marking only the last would
-  // under-report what actually happened.
+function engineZone(fired, threw, enforcing) {
   return STEP_LABELS.map(([k, label]) => {
     let cls = "step";
     if (!enforcing) cls += " off";
-    else if (threwAt.has(k)) cls += " threw";
+    else if (threw.has(k)) cls += " threw";
     else if (fired.includes(k)) cls += " fired";
     return `<div class="${cls}"><span class="dot"></span><span>${esc(label)}</span></div>`;
   }).join("") + (enforcing ? "" :
     `<div class="none" style="margin-top:.7rem">Engine bypassed — no key to check.</div>`);
 }
 
-// Executes one scenario action against the REAL engine. A "blocked" card can
-// only be produced by an actual throw.
-async function execute(action, engine, p1) {
-  if (action.kind === "call") {
-    return await outcome(() => engine.authorizeCall(p1, action.cap, action.cost ?? {}));
-  }
-  return await outcome(() =>
-    attenuate(p1, { addActor: action.actor, caps: action.caps, budget: action.budget }));
-}
-
-async function run() {
-  const sc = ACTIVE;
-  const enforcing = $("enforce").checked;
-  $("tstate").textContent = enforcing ? "ON" : "OFF";
-  $("tstate").className = "tstate" + (enforcing ? " on" : "");
-  $("thint").textContent = enforcing
-    ? "The helper holds a narrowed key. Flip it off to remove the key entirely."
-    : "No key. The helper inherits your full authority — the usual setup today.";
-
-  const L = [];
-  const say = (s) => L.push(s);
-  say(`<span class="c-m">$</span> node demo.js   <span class="c-m"># enforcement: </span>` +
-      (enforcing ? `<span class="c-g">ON</span>` : `<span class="c-r">OFF</span>`));
-  say("");
-
-  if (!enforcing) {
-    const u = sc.unenforced;
-    u.intro.forEach(line => say(`<span class="c-m">${esc(line)}</span>`));
-    say("");
-    u.outcomes.forEach(o => say(
-      `<span class="${o.tone === "pass" ? "c-g" : "c-r"}">${o.tone === "pass" ? "✓" : "✗"}</span> ` +
-      `${esc(o.trace).padEnd(22)} <span class="c-r">→ ${esc(o.verdict)}</span>` +
-      (o.flag ? `  <span class="c-r">${esc(o.flag)}</span>` : "")));
-    say("");
-    say(`<span class="c-r">${esc(u.closing)}</span>`);
-
-    $("engine-note").textContent = "bypassed";
-    $("z-key").innerHTML = `<div class="none">No key issued.</div>` +
-      u.key.map(([k, v]) => `<div class="row" style="margin-top:.5rem"><span class="lbl">${esc(k)}</span>
-        <span class="val" style="color:var(--red-hi)">${esc(v)}</span></div>`).join("");
-    $("z-engine").innerHTML = engineZone([], new Set(), false);
-    $("z-out").innerHTML = u.outcomes.map(o =>
-      `<div class="out ${o.tone}"><div class="out-head">${esc(o.label)}</div>
-        <div class="verdict">${esc(o.verdict)}</div>
-        <div class="reason">${esc(o.note)}</div></div>`).join("");
-    $("log").innerHTML = L.join("\n");
-    return;
-  }
-
-  // ---- enforcement ON: every card below comes from a real engine call ----
+// ---------------------------------------------------------------- the runner
+// THE ONLY path that produces enforced results. Both the resting render and
+// PLAY call this; PLAY simply passes a delay. There is no separate animation
+// script that could drift from the engine — a card marked BLOCKED can only be
+// produced by a real throw from authorizeCall()/attenuate() below.
+async function runEnforced(sc, { stepDelay = 0, onStep } = {}) {
   const engine = new Engine();
   const p0 = await mintRoot(sc.root);
-  say(`<span class="c-c">P0</span> root key    : ${esc(p0.caps.join(", "))}`);
   const p1 = await engine.delegate(p0, sc.child);
-  const dropped = p0.caps.filter(c => !p1.caps.includes(c));
-  say(`<span class="c-c">P1</span> cleanup key : ${esc(p1.caps.join(", "))}   ` +
-      `<span class="c-a">← ${esc(dropped.join(", "))} dropped</span>`);
-  say("");
-
-  const outs = [];
-  let fired = [], threwAt = new Set(), lastRemaining = null;
-
+  const results = [];
   for (const action of sc.actions) {
-    const res = await execute(action, engine, p1);
-    if (res.ok) {
-      if (action.kind === "call") { fired = [...engine.steps]; lastRemaining = res.value.remaining; }
-      const detail = lastRemaining ? ` · budget now ${JSON.stringify(lastRemaining)}` : "";
-      say(`<span class="c-g">✓</span> ${esc(action.trace).padEnd(22)} <span class="c-g">→ ALLOWED</span>` +
-          (lastRemaining ? `   <span class="c-m">remaining ${esc(JSON.stringify(lastRemaining))}</span>` : ""));
-      outs.push(`<div class="out pass"><div class="out-head">${esc(action.label)}</div>
-        <div class="verdict">ALLOWED</div>
-        <div class="reason">${esc((action.allowNote ?? "") + detail)}</div></div>`);
-    } else {
-      const step = STEP_FOR_CODE[res.code];            // from the real thrown code
-      if (step) threwAt.add(step);
-      say(`<span class="c-g">✓</span> ${esc(action.trace).padEnd(22)} <span class="c-r">→ DENIED (${esc(res.code)})</span>` +
-          (action.denyNote ? `   <span class="c-m">${esc(action.denyNote)}</span>` : ""));
-      outs.push(`<div class="out block"><div class="out-head">${esc(action.label)}</div>
-        <div class="verdict">BLOCKED</div>
-        <div class="code">${esc(res.code)}</div>
-        <div class="reason">${esc(action.denyNote ?? "")}</div></div>`);
-    }
+    if (stepDelay) await pause(stepDelay);
+    const res = action.kind === "call"
+      ? await outcome(() => engine.authorizeCall(p1, action.cap, action.cost ?? {}))
+      : await outcome(() => attenuate(p1,
+          { addActor: action.actor, caps: action.caps, budget: action.budget }));
+    const step = { action, res, fired: [...engine.steps] };
+    results.push(step);
+    if (onStep) onStep({ p0, p1, results });
   }
+  return { p0, p1, results };
+}
 
-  say("");
-  say(`<span class="c-m">The injection still happened. It just had nowhere to go.</span>`);
+// A slot whose real call has not returned yet. Deliberately carries no
+// verdict, no colour and no code — it must be impossible for a placeholder to
+// imply an outcome the engine has not actually produced.
+function pendingCard(action) {
+  return `<div class="out pending">
+    <div class="out-head">${esc(action.label)}</div>
+    <div class="verdict" style="color:var(--dim)">…</div>
+    <div class="reason">awaiting the engine</div></div>`;
+}
 
-  $("engine-note").textContent = threwAt.size
-    ? `allowed call lit ${fired.length}/4 · denied at ${[...threwAt].join(" + ")}`
-    : "which step decided";
+function outCard(step, pending) {
+  const { action, res } = step;
+  if (res.ok) {
+    const rem = res.value?.remaining;
+    return `<div class="out pass${pending ? " pending" : ""}">
+      <div class="out-head">${esc(action.label)}</div>
+      <div class="verdict">ALLOWED</div>
+      <div class="reason">${esc(action.allowNote ?? "")}${rem ? " · budget now " + esc(fmtBudget(rem)) : ""}</div></div>`;
+  }
+  return `<div class="out block${pending ? " pending" : ""}">
+    <div class="out-head">${esc(action.label)}</div>
+    <div class="verdict">BLOCKED</div>
+    <div class="code">${esc(res.code)}</div>
+    <div class="reason">${esc(action.denyNote ?? res.message ?? "")}</div></div>`;
+}
+
+function renderEnforced({ p0, p1, results }, revealCount) {
+  const shown = revealCount ?? results.length;
+  const fired = results.filter(s => s.res.ok).flatMap(s => s.fired);
+  const threw = new Set(results.slice(0, shown)
+    .filter(s => !s.res.ok).map(s => STEP_FOR_CODE[s.res.code]).filter(Boolean));
+  const lastRem = results.slice(0, shown).map(s => s.res.value?.remaining).filter(Boolean).pop();
 
   const cap = (c) => p1.caps.includes(c)
     ? `<span class="cap kept">✓ ${esc(c)}</span>`
     : `<span class="cap dropped">✗ ${esc(c)}</span>`;
-  $("z-key").innerHTML = p0.caps.map(cap).join("") +
+  $("on-key").innerHTML = p0.caps.map(cap).join("") +
     `<div class="row" style="margin-top:.7rem"><span class="lbl">chain</span>
-       <span class="val" style="color:var(--cyan)">${esc(p1.act.join(" → "))}</span></div>` +
-    Object.entries(lastRemaining ?? p1.budget).map(([k, v]) =>
-      `<div class="row"><span class="lbl">${esc(k)}</span><span class="val">${esc(v)}</span></div>`).join("");
-  $("z-engine").innerHTML = engineZone(fired, threwAt, true);
-  $("z-out").innerHTML = outs.join("");
-  $("log").innerHTML = L.join("\n");
+       <span class="val" style="color:var(--brand)">${esc(p1.act.join(" → "))}</span></div>` +
+    Object.entries(lastRem ?? p1.budget).map(([k, v]) =>
+      `<div class="row"><span class="lbl">${esc(k)}</span>
+        <span class="val">${esc(fmtBudgetVal(k, v))}</span></div>`).join("");
+
+  $("on-engine").innerHTML = engineZone(results.length ? fired : [], threw, true);
+  $("on-out").innerHTML = ACTIVE.actions
+    .map((action, i) => (results[i] ? outCard(results[i], false) : pendingCard(action)))
+    .join("");
+
+  // table rows come from the same real results
+  $("trace-body").innerHTML = results.slice(0, shown).map(s => {
+    const { action, res } = s;
+    const reqCap = action.kind === "call" ? action.cap : "mint " + action.caps.join(", ");
+    if (res.ok) {
+      const rem = res.value?.remaining;
+      return `<tr><td class="cap-col" data-label="Capability">✓ ${esc(reqCap)}</td>
+        <td class="verdict-col allow" data-label="Verdict">ALLOWED</td>
+        <td data-label="Why">${esc(action.allowNote ?? "")}${rem ? " · budget now " + esc(money(rem.max_spend)) : ""}</td></tr>`;
+    }
+    return `<tr><td class="cap-col" data-label="Capability">✗ ${esc(reqCap)}</td>
+      <td class="verdict-col deny" data-label="Verdict">DENIED · ${esc(res.code)}</td>
+      <td data-label="Why">${esc(action.denyNote ?? "")}</td></tr>`;
+  }).join("");
 }
+
+function renderUnchecked(sc, revealCount) {
+  const shown = revealCount ?? sc.unchecked.length;
+  $("off-key").innerHTML =
+    `<div class="none">No key issued.</div>` +
+    `<div class="row" style="margin-top:.5rem"><span class="lbl">authority</span>
+       <span class="val" style="color:var(--red-hi)">full / ambient</span></div>` +
+    `<div class="row"><span class="lbl">budget</span>
+       <span class="val" style="color:var(--red-hi)">unbounded</span></div>`;
+  $("off-engine").innerHTML = engineZone([], new Set(), false);
+  $("off-out").innerHTML = sc.unchecked.map((o, i) =>
+    `<div class="out ${o.tone}${i >= shown ? " pending" : ""}">
+      <div class="out-head">${esc(o.label)}</div>
+      <div class="verdict">${esc(o.verdict)}</div>
+      <div class="reason">${esc(o.note)}</div></div>`).join("");
+}
+
+// ---------------------------------------------------------------- play
+let enforcedRun = null;
+async function playOn(btn) {
+  btn.disabled = true;
+  renderEnforced({ ...enforcedRun, results: [] });   // every slot back to placeholder
+  // Re-runs the REAL engine, one call at a time. Each slot fills only when its
+  // own authorizeCall()/attenuate() has actually returned.
+  enforcedRun = await runEnforced(ACTIVE, { stepDelay: 620, onStep: renderEnforced });
+  renderEnforced(enforcedRun);
+  btn.disabled = false;
+}
+async function playOff(btn) {
+  btn.disabled = true;
+  renderUnchecked(ACTIVE, 0);
+  for (let i = 0; i < ACTIVE.unchecked.length; i++) {
+    await pause(620);
+    renderUnchecked(ACTIVE, i + 1);
+  }
+  btn.disabled = false;
+}
+document.querySelectorAll("[data-play]").forEach(btn =>
+  btn.addEventListener("click", () => (btn.dataset.play === "on" ? playOn(btn) : playOff(btn))));
+
+$("copy-btn").addEventListener("click", async () => {
+  const btn = $("copy-btn");
+  try { await navigator.clipboard.writeText($("install-cmd").textContent.trim()); btn.textContent = "Copied ✓"; }
+  catch { btn.textContent = "Select & copy"; }
+  setTimeout(() => (btn.textContent = "Copy"), 1800);
+});
 
 // ---------------------------------------------------------------- boot
 (async () => {
@@ -534,18 +605,21 @@ async function run() {
   catch (e) { parity = { total: PARITY.vectors.length, diffs: ["threw while running vectors: " + e.message] }; }
 
   const badge = $("parity-badge");
-  if (parity.diffs.length === 0) {
-    badge.textContent = `parity: ${parity.total}/${parity.total} ✓`;
-    badge.className = "badge ok";
-    $("enforce").addEventListener("change", run);
-    await run();
-  } else {
+  if (parity.diffs.length) {
     badge.textContent = `parity: FAILED (${parity.diffs.length}/${parity.total})`;
     badge.className = "badge bad";
     $("app").style.display = "none";
     $("fatal").style.display = "block";
     $("fatal-detail").textContent = parity.diffs.join("\n\n");
+    return;
   }
+  badge.textContent = `parity: ${parity.total}/${parity.total} ✓`;
+  badge.className = "badge ok";
+
+  // Resting state: both blocks fully rendered from a real run, no interaction needed.
+  enforcedRun = await runEnforced(ACTIVE);
+  renderEnforced(enforcedRun);
+  renderUnchecked(ACTIVE);
 })();
 </script>
 </body>
