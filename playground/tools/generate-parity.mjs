@@ -10,7 +10,7 @@
 // Checked in CI by test/parity.test.js so it cannot silently drift.
 
 import { writeFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { dirname, join } from "node:path";
 import { mintRoot, attenuate, verifySignature, sign, hashOf } from "../../src/passport.js";
 import { Engine } from "../../src/engine.js";
@@ -81,6 +81,9 @@ export function buildVectors() {
   return { root: ROOT, child: CHILD, vectors };
 }
 
+// Write ONLY when run directly — see the note in build-standalone.mjs. An
+// import that rewrites parity.js would mask exactly the drift the test hunts.
+if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
 const data = buildVectors();
 const body =
   "// GENERATED FILE — do not edit by hand.\n" +
@@ -91,4 +94,5 @@ writeFileSync(join(__dir, "..", "parity.js"), body);
 console.log(`wrote playground/parity.js — ${data.vectors.length} vectors`);
 for (const v of data.vectors) {
   console.log(`  ${v.id.padEnd(22)} ${v.ok ? "ok=" + JSON.stringify(v.value).slice(0, 46) : "throw " + v.code}`);
+}
 }
