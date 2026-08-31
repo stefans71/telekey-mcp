@@ -456,7 +456,6 @@
     <span class="mark">TeleKey</span>
     <span class="badges">
       <span class="badge wait" id="parity-badge">parity: checking…</span>
-      <span class="badge" id="crypto-badge">crypto: —</span>
       <a class="badge" href="https://github.com/stefans71/telekey-mcp">GitHub ↗</a>
       <a class="badge" href="https://arxiv.org/abs/2608.01710">arXiv ↗</a>
     </span>
@@ -1434,8 +1433,11 @@ $("copy-btn").addEventListener("click", async () => {
 // ---------------------------------------------------------------- boot
 (async () => {
   applyScale(0);
-  $("crypto-badge").textContent = "crypto: " + (globalThis.crypto?.subtle ? "Web Crypto ✓" : "UNAVAILABLE");
-  $("crypto-badge").className = "badge " + (globalThis.crypto?.subtle ? "ok" : "bad");
+  // No crypto pill in the header: "crypto" reads as cryptocurrency to most
+  // people and the fact belongs in the caveat, where it is stated precisely.
+  // Nothing is lost diagnostically — if crypto.subtle is missing, hmacKey()
+  // throws, runParity() catches it, and the page shows the parity-failure
+  // panel instead of rendering a demo it cannot back up.
 
   let parity;
   try { parity = await runParity(); }
