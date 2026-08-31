@@ -528,7 +528,13 @@ function outCard(step) {
 }
 
 // ---------------------------------------------------------------- beats
-const BEAT = { reset: 760, key: 720, step: 520, out: 700, gap: 420 };
+// Two beat sets, kept apart on purpose. The ON block is the one being read
+// closely — each engine step needs time to register, and the verdict needs a
+// pause before the next call starts — so it runs slower. The OFF block is
+// short and makes its point quickly; slowing it would just be dead air.
+// ON total ~15.5s, OFF unchanged at ~5.1s.
+const BEAT_ON  = { reset: 1150, key: 950, step: 820, out: 1250, gap: 500 };
+const BEAT_OFF = { reset:  760, key: 720, step: 520, out:  700, gap: 420 };
 const beat = (ms) => pause(ms);
 
 // The REAL step chain for one call, derived from what actually executed —
@@ -688,7 +694,7 @@ async function playOn(btn) {
   // Nothing in boxes 2 or 3 is pre-resolved.
   renderOn(enforcedRun, { resolved: 0, chain: [], chainShown: 0 });
   setRound('<span class="quiet">starting…</span>');
-  await beat(BEAT.gap);
+  await beat(BEAT_ON.gap);
 
   const total = ACTIVE.actions.length;
   enforcedRun = await runEnforced(ACTIVE, {
@@ -702,24 +708,24 @@ async function playOn(btn) {
       // resolved stay resolved, so the tally builds up rather than resetting.
       renderOn(run, { resolved: i, chain: [], chainShown: 0, asking: null });
       setRound(`Call ${i + 1} of ${total} <span class="quiet">— starting</span>`);
-      await beat(BEAT.reset);
+      await beat(BEAT_ON.reset);
 
       // beat 1 — the request leaves the key
       setRound(`Call ${i + 1} of ${total} <span class="quiet">· ${esc(asking)}</span>`);
       renderOn(run, { resolved: i, chain: [], chainShown: 0, asking });
-      await beat(BEAT.key);
+      await beat(BEAT_ON.key);
 
       // beat 2 — the engine chain, one real step at a time
       const chain = chainFor(s);
       for (let n = 1; n <= chain.length; n++) {
         renderOn(run, { resolved: i, chain, chainShown: n, asking });
-        await beat(BEAT.step);
+        await beat(BEAT_ON.step);
       }
 
       // beat 3 — this call's outbound card resolves, and stays resolved
       renderOn(run, { resolved: i + 1, chain, chainShown: chain.length, asking });
       setRound(`Call ${i + 1} of ${total} <span class="quiet">· ${s.res.ok ? "allowed" : "blocked · " + esc(s.res.code)}</span>`);
-      await beat(BEAT.out);
+      await beat(BEAT_ON.out);
     },
   });
   renderOn(enforcedRun);
@@ -730,17 +736,17 @@ async function playOn(btn) {
 async function playOff(btn) {
   btn.disabled = true;
   renderOff({ resolved: 0 });
-  await beat(BEAT.gap);
+  await beat(BEAT_OFF.gap);
   for (let i = 0; i < ACTIVE.unchecked.length; i++) {
     const asking = ACTIVE.actions[i] ? (ACTIVE.actions[i].cap ?? ACTIVE.unchecked[i].label) : ACTIVE.unchecked[i].label;
     renderOff({ resolved: i, asking });
-    await beat(BEAT.key);
+    await beat(BEAT_OFF.key);
     // box 2 is a visible pass-through: no step gates, so the chain never lights
     renderOff({ resolved: i, asking });
-    await beat(BEAT.step);
+    await beat(BEAT_OFF.step);
     renderOff({ resolved: i + 1, asking });
-    await beat(BEAT.out);
-    await beat(BEAT.gap);
+    await beat(BEAT_OFF.out);
+    await beat(BEAT_OFF.gap);
   }
   renderOff();
   btn.disabled = false;
