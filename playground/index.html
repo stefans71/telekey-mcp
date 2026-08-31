@@ -88,7 +88,8 @@
      line-height:1.25;max-width:46ch}
   h1 .k{color:var(--brand)}
   .lede{margin:0 0 .35rem;font-size:var(--fs-lede);color:var(--mute);max-width:70ch;line-height:1.5}
-  .lede.where{color:var(--dim);font-size:var(--fs-small)}
+  .lede.where{color:var(--dim);font-size:var(--fs-small);margin-top:1.1rem;
+              padding-top:.75rem;border-top:1px solid var(--hair);max-width:56ch}
   .lede b{color:var(--ink);font-weight:600}
 
   #fatal{display:none;border:1px solid var(--red);background:#2a1315;border-radius:10px;
@@ -147,6 +148,15 @@
               box-shadow:-.5rem 0 0 rgba(57,197,207,.12), .5rem 0 0 rgba(57,197,207,.12)}
   .askline{margin-top:.7rem;padding-top:.6rem;border-top:1px solid var(--hair);
            font-size:var(--fs-small);color:var(--dim)}
+  /* OFF has no engine at all — no step list, because those steps do not exist
+     in that world. The absence is the message. */
+  .noengine{color:var(--mute);font-size:var(--fs-body);line-height:1.65;padding:.2rem 0}
+  .noengine b{color:var(--ink);font-weight:700;display:block;margin-bottom:.3rem}
+  /* round indicator — punctuation between calls */
+  .round{font-size:var(--fs-small);color:var(--brand);font-weight:700;
+         margin:.4rem 0 0;min-height:1.5em}
+  .round .quiet{color:var(--dim);font-weight:400}
+  .round .tally{color:var(--mute);font-weight:400}
   .askline b{color:var(--brand);font-weight:700;overflow-wrap:anywhere}
   .askline .miss{color:var(--red-hi)}
 
@@ -289,7 +299,7 @@
     <div class="zones">
       <div class="zone"><h3>The scoped key</h3><p class="note">what TeleKey handed the sub-agent</p><div id="off-key"></div></div>
       <div class="arrow" aria-hidden="true">→</div>
-      <div class="zone"><h3>The TeleKey engine</h3><p class="note">checks every call before it runs</p><div id="off-engine"></div></div>
+      <div class="zone"><h3>The TeleKey engine</h3><p class="note">not present in this setup</p><div id="off-engine"></div></div>
       <div class="arrow" aria-hidden="true">→</div>
       <div class="zone"><h3>Outbound calls</h3><p class="note">what the agent actually got to do</p><div id="off-out"></div></div>
     </div>
@@ -301,6 +311,7 @@
       <div>
         <h2 class="block-title">With TeleKey — the same attack, scoped</h2>
         <p class="block-sub">Same request, same injection. Every call now goes through the engine first.</p>
+        <p class="round" id="on-round"></p>
       </div>
       <button class="play" type="button" data-play="on">▶ Play</button>
     </div>
@@ -511,7 +522,7 @@ function outCard(step) {
 }
 
 // ---------------------------------------------------------------- beats
-const BEAT = { key: 700, step: 520, out: 620, gap: 460 };
+const BEAT = { reset: 760, key: 720, step: 520, out: 700, gap: 420 };
 const beat = (ms) => pause(ms);
 
 // The REAL step chain for one call, derived from what actually executed —
@@ -642,7 +653,10 @@ function renderOff(frame = {}) {
        <span class="val" style="color:var(--red-hi)">unbounded</span></div>` +
     (asking ? `<div class="askline">requesting <b>${esc(asking)}</b>
        <span class="miss">— nothing scopes this</span></div>` : "");
-  $("off-engine").innerHTML = engineZone([], false, null, false);
+  // No step list here: the four steps belong to TeleKey, and TeleKey is not
+  // present in this block. Showing them greyed would imply they exist.
+  $("off-engine").innerHTML =
+    `<div class="noengine"><b>No TeleKey here.</b>Nothing checks this call before it runs.</div>`;
   $("off-out").innerHTML = ACTIVE.unchecked.map((o, i) =>
     i < shown
       ? `<div class="out ${o.tone}"><div class="out-head">${esc(o.label)}</div>
@@ -653,6 +667,16 @@ function renderOff(frame = {}) {
           <div class="reason">in flight — nothing is checking it</div></div>`).join("");
 }
 
+// ---------------------------------------------------------------- rounds
+// Punctuation between calls: the viewer needs to see one call finish and the
+// next begin, or three passes read as one stream.
+function setRound(html) { $("on-round").innerHTML = html; }
+function roundTally(run) {
+  const total = run.results.length;
+  const allowed = run.results.filter(s => s.res.ok).length;
+  setRound(`<span class="tally">${total} calls · ${allowed} allowed, ${total - allowed} blocked</span>`);
+}
+
 // ---------------------------------------------------------------- play
 let enforcedRun = null;
 
@@ -660,8 +684,10 @@ async function playOn(btn) {
   btn.disabled = true;
   // Nothing in boxes 2 or 3 is pre-resolved.
   renderOn(enforcedRun, { resolved: 0, chain: [], chainShown: 0 });
+  setRound('<span class="quiet">starting…</span>');
   await beat(BEAT.gap);
 
+  const total = ACTIVE.actions.length;
   enforcedRun = await runEnforced(ACTIVE, {
     onStep: async ({ p0, p1, results }) => {
       const i = results.length - 1;
@@ -669,7 +695,14 @@ async function playOn(btn) {
       const run = { p0, p1, results };
       const asking = s.action.kind === "call" ? s.action.cap : "mint " + s.action.caps.join(", ");
 
+      // beat 0 — the break. Engine dark, nothing asking. Cards already
+      // resolved stay resolved, so the tally builds up rather than resetting.
+      renderOn(run, { resolved: i, chain: [], chainShown: 0, asking: null });
+      setRound(`Call ${i + 1} of ${total} <span class="quiet">— starting</span>`);
+      await beat(BEAT.reset);
+
       // beat 1 — the request leaves the key
+      setRound(`Call ${i + 1} of ${total} <span class="quiet">· ${esc(asking)}</span>`);
       renderOn(run, { resolved: i, chain: [], chainShown: 0, asking });
       await beat(BEAT.key);
 
@@ -680,13 +713,14 @@ async function playOn(btn) {
         await beat(BEAT.step);
       }
 
-      // beat 3 — the outbound card resolves to its real verdict
+      // beat 3 — this call's outbound card resolves, and stays resolved
       renderOn(run, { resolved: i + 1, chain, chainShown: chain.length, asking });
+      setRound(`Call ${i + 1} of ${total} <span class="quiet">· ${s.res.ok ? "allowed" : "blocked · " + esc(s.res.code)}</span>`);
       await beat(BEAT.out);
-      await beat(BEAT.gap);
     },
   });
   renderOn(enforcedRun);
+  roundTally(enforcedRun);
   btn.disabled = false;
 }
 
@@ -744,6 +778,7 @@ $("copy-btn").addEventListener("click", async () => {
   // Resting state: both blocks fully rendered from a real run, no interaction needed.
   enforcedRun = await runEnforced(ACTIVE);
   renderOn(enforcedRun);
+  roundTally(enforcedRun);
   renderOff();
 })();
 </script>
