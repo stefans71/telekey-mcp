@@ -91,7 +91,10 @@
   /* Sits tight to the heading it introduces: generous room above to separate
      it from the hero, minimal room below so it reads as a label ON the section
      rather than floating between the two. */
-  .section-eyebrow{margin:2.25rem 0 .5rem;padding:1.1rem 0 0;
+  /* Grouping is [rule] -> [eyebrow] -> [heading + subtitle] as one unit. The
+     generous space goes ABOVE the rule to break from the hero; below the
+     eyebrow it stays tight so the label reads as belonging to the heading. */
+  .section-eyebrow{margin:3rem 0 .25rem;padding:.85rem 0 0;
                    border-top:1px solid var(--hair);color:var(--label)}
   h1{font-size:var(--fs-h1);font-weight:700;margin:0 0 1rem;letter-spacing:-.02em;
      line-height:1.15;max-width:22ch;color:var(--ink)}
@@ -318,10 +321,9 @@
 
 <div id="app">
 
-  <p class="eyebrow section-eyebrow">Watch an unauthorized tool call get stopped</p>
-
   <!-- ============ BLOCK 1 — without TeleKey ============ -->
   <section class="block off" id="block-off">
+    <p class="eyebrow section-eyebrow">Watch an unauthorized tool call get stopped</p>
     <div class="block-head">
       <div>
         <h2 class="block-title">Without TeleKey — the usual setup today</h2>
