@@ -753,29 +753,43 @@ function toHex(buf) {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-let _key = null;
-function hmacKey() {
-  if (!crypto?.subtle) {
+// Single guard, returning the subtle instance so every caller goes through it.
+// It must be evaluated BEFORE any crypto.subtle member access — see sign().
+function requireSubtle() {
+  if (!globalThis.crypto?.subtle) {
     throw new Error(
       "Web Crypto (crypto.subtle) unavailable — this page requires a secure context (https or localhost)."
     );
   }
+  return globalThis.crypto.subtle;
+}
+
+let _key = null;
+function hmacKey() {
+  const subtle = requireSubtle();
   // Node: crypto.createHmac("sha256", SECRET) — same key, same algorithm.
   if (!_key) {
-    _key = crypto.subtle.importKey("raw", enc.encode(SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    _key = subtle.importKey("raw", enc.encode(SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   }
   return _key;
 }
 
 // Node: crypto.createHmac("sha256", SECRET).update(canonical(body)).digest("hex")
 async function sign(body) {
-  const mac = await crypto.subtle.sign("HMAC", await hmacKey(), enc.encode(canonical(body)));
+  // Resolve the key first, on purpose. Written as
+  //   crypto.subtle.sign("HMAC", await hmacKey(), ...)
+  // JS evaluates the crypto.subtle.sign member access before awaiting the
+  // argument, so a missing crypto.subtle threw "Cannot read properties of
+  // undefined (reading 'sign')" and the guard below never got the chance to
+  // report what was actually wrong.
+  const key = await hmacKey();
+  const mac = await requireSubtle().sign("HMAC", key, enc.encode(canonical(body)));
   return toHex(mac);
 }
 
 // Node: crypto.createHash("sha256").update(JSON.stringify(p)).digest("hex").slice(0,16)
 async function hashOf(passport) {
-  const d = await crypto.subtle.digest("SHA-256", enc.encode(JSON.stringify(passport)));
+  const d = await requireSubtle().digest("SHA-256", enc.encode(JSON.stringify(passport)));
   return toHex(d).slice(0, 16);
 }
 // --- end crypto shim -------------------------------------------------------
